@@ -85,7 +85,7 @@ fun FamilyArchiveApp(
                 ArchiveStatus.ACCESS_REQUIRED -> StatusScreen(
                     title = "Требуется доступ к фотографиям",
                     message = uiState.message ?: accessMessage(uiState.accessRequest),
-                    actionLabel = "Предоставить доступ",
+                    actionLabel = accessActionLabel(uiState.accessRequest),
                     onAction = { uiState.accessRequest?.let(onGrantAccess) }
                 )
                 ArchiveStatus.NO_STORAGE -> StatusScreen(
@@ -446,8 +446,13 @@ private fun FocusableTile(onClick: () -> Unit, content: @Composable () -> Unit) 
 private fun accessMessage(request: AccessRequest?): String = when (request) {
     AccessRequest.LEGACY_READ -> "Разрешите приложению читать файлы на подключённом USB-накопителе."
     AccessRequest.DOCUMENT_TREE -> "Выберите папку FamilyArchive один раз. Android сохранит доступ после перезагрузки."
-    AccessRequest.ALL_FILES -> "В системных настройках включите для приложения доступ ко всем файлам."
+    AccessRequest.ALL_FILES -> "Выберите папку FamilyArchive или корень USB-накопителя. Android сохранит доступ после перезагрузки."
     null -> "Предоставьте доступ к папке семейного архива."
+}
+
+private fun accessActionLabel(request: AccessRequest?): String = when (request) {
+    AccessRequest.DOCUMENT_TREE, AccessRequest.ALL_FILES -> "Выбрать папку"
+    AccessRequest.LEGACY_READ, null -> "Предоставить доступ"
 }
 
 private fun updateButtonLabel(state: UpdateUiState): String = when (state.status) {

@@ -1,7 +1,6 @@
 package com.samdvich.familyarchivegallery
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -48,10 +47,6 @@ class MainActivity : ComponentActivity() {
         preferences.edit().putString(KEY_ARCHIVE_TREE_URI, uri.toString()).apply()
         viewModel.scanDocumentTree(uri, ARCHIVE_DIRECTORY_NAME)
     }
-
-    private val settingsLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { ensureStorageAccess() }
 
     private val unknownSourcesLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -141,7 +136,11 @@ class MainActivity : ComponentActivity() {
                 else viewModel.scanDocumentTree(savedUri, ARCHIVE_DIRECTORY_NAME)
             }
             Environment.isExternalStorageManager() -> viewModel.scanDirect(ARCHIVE_DIRECTORY_NAME)
-            else -> viewModel.requireAccess(AccessRequest.ALL_FILES)
+            else -> {
+                val savedUri = preferences.getString(KEY_ARCHIVE_TREE_URI, null)?.let(Uri::parse)
+                if (savedUri == null) viewModel.requireAccess(AccessRequest.ALL_FILES)
+                else viewModel.scanDocumentTree(savedUri, ARCHIVE_DIRECTORY_NAME)
+            }
         }
     }
 
@@ -149,24 +148,33 @@ class MainActivity : ComponentActivity() {
         when (request) {
             AccessRequest.LEGACY_READ -> legacyPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
             AccessRequest.DOCUMENT_TREE -> documentTreeLauncher.launch(null)
-            AccessRequest.ALL_FILES -> openAllFilesSettingsOrFallback()
+            AccessRequest.ALL_FILES -> openDocumentTreeOrAllFilesSettings()
         }
     }
 
-    @SuppressLint("InlinedApi")
-    private fun openAllFilesSettingsOrFallback() {
+    private fun openDocumentTreeOrAllFilesSettings() {
+        try {
+            documentTreeLauncher.launch(null)
+        } catch (_: ActivityNotFoundException) {
+            openAllFilesSettings()
+        }
+    }
+
+    private fun openAllFilesSettings() {
         val appIntent = Intent(
             Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
             Uri.parse("package:$packageName")
         )
-        val globalIntent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
         try {
-            settingsLauncher.launch(appIntent)
+            startActivity(appIntent)
         } catch (_: ActivityNotFoundException) {
             try {
-                settingsLauncher.launch(globalIntent)
+                startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
             } catch (_: ActivityNotFoundException) {
-                documentTreeLauncher.launch(null)
+                viewModel.requireAccess(
+                    AccessRequest.ALL_FILES,
+                    "Системный выбор папки недоступен на этой приставке"
+                )
             }
         }
     }
