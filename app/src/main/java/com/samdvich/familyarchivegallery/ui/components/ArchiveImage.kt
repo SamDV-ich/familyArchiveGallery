@@ -1,7 +1,9 @@
 package com.samdvich.familyarchivegallery.ui.components
 
 import android.graphics.ImageDecoder
+import android.graphics.Bitmap
 import android.net.Uri
+import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -9,9 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -31,41 +33,64 @@ fun ArchiveImage(
 ) {
     val context = LocalContext.current
     val cacheKey = "${photo.source}|${photo.size}|${photo.lastModified}|$maxDimension"
-    val image by produceState<ImageBitmap?>(initialValue = null, cacheKey) {
+    val cached = remember(cacheKey) { ArchiveBitmapCache.get(cacheKey) }
+    val bitmap by produceState<Bitmap?>(initialValue = cached, cacheKey) {
+        if (value != null) return@produceState
         value = withContext(Dispatchers.IO) {
-            runCatching {
-                val source = when (photo.sourceType) {
-                    PhotoSourceType.FILE -> ImageDecoder.createSource(File(photo.source))
-                    PhotoSourceType.CONTENT_URI -> ImageDecoder.createSource(
-                        context.contentResolver,
-                        Uri.parse(photo.source)
-                    )
-                }
-                ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
-                    val width = info.size.width
-                    val height = info.size.height
-                    val largestSide = max(width, height)
-                    if (largestSide > maxDimension) {
-                        val scale = maxDimension.toFloat() / largestSide
-                        decoder.setTargetSize(
-                            (width * scale).toInt().coerceAtLeast(1),
-                            (height * scale).toInt().coerceAtLeast(1)
-                        )
-                    }
-                    decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                }.asImageBitmap()
-            }.getOrNull()
+            ArchiveBitmapCache.get(cacheKey) ?: runCatching {
+                decodeBitmap(context, photo, maxDimension)
+            }.getOrNull()?.also { ArchiveBitmapCache.put(cacheKey, it) }
         }
     }
 
-    if (image == null) {
+    if (bitmap == null) {
         Box(modifier = modifier.background(Color(0xFF263241)))
     } else {
         Image(
-            bitmap = requireNotNull(image),
+            bitmap = requireNotNull(bitmap).asImageBitmap(),
             contentDescription = photo.name,
             contentScale = contentScale,
             modifier = modifier
         )
+    }
+}
+
+private fun decodeBitmap(context: android.content.Context, photo: PhotoItem, maxDimension: Int): Bitmap {
+    val source = when (photo.sourceType) {
+        PhotoSourceType.FILE -> ImageDecoder.createSource(File(photo.source))
+        PhotoSourceType.CONTENT_URI -> ImageDecoder.createSource(
+            context.contentResolver,
+            Uri.parse(photo.source)
+        )
+    }
+    return ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+        val width = info.size.width
+        val height = info.size.height
+        val largestSide = max(width, height)
+        if (largestSide > maxDimension) {
+            val scale = maxDimension.toFloat() / largestSide
+            decoder.setTargetSize(
+                (width * scale).toInt().coerceAtLeast(1),
+                (height * scale).toInt().coerceAtLeast(1)
+            )
+        }
+        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+    }
+}
+
+private object ArchiveBitmapCache {
+    private const val KILOBYTE = 1024
+    private val maxSizeKb = (Runtime.getRuntime().maxMemory() / 16L / KILOBYTE)
+        .coerceIn(8L * KILOBYTE, 32L * KILOBYTE)
+        .toInt()
+    private val cache = object : LruCache<String, Bitmap>(maxSizeKb) {
+        override fun sizeOf(key: String, value: Bitmap): Int =
+            (value.allocationByteCount / KILOBYTE).coerceAtLeast(1)
+    }
+
+    fun get(key: String): Bitmap? = cache.get(key)
+
+    fun put(key: String, bitmap: Bitmap) {
+        cache.put(key, bitmap)
     }
 }

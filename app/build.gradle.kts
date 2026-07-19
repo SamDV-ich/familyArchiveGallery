@@ -19,7 +19,10 @@ android {
     defaultConfig {
         applicationId = "com.samdvich.familyarchivegallery"
         minSdk = 28
-        targetSdk = 36
+        // Android TV 11 builds from some vendors omit both DocumentsUI and the
+        // MANAGE_EXTERNAL_STORAGE settings screen. Targeting API 29 keeps the
+        // read-only legacy storage permission available for those devices.
+        targetSdk = 29
         versionCode = 1
         versionName = "1.0.0"
 
@@ -50,7 +53,7 @@ android {
         release {
             signingConfig = signingConfigs.getByName("release")
             optimization {
-                enable = false
+                enable = true
             }
         }
     }
@@ -61,6 +64,11 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    lint {
+        // This private sideload build intentionally targets API 29 so Xiaomi
+        // Android TV 11 can expose read-only USB storage without DocumentsUI.
+        disable += "ExpiredTargetSdkVersion"
     }
 }
 

@@ -1,10 +1,10 @@
-# Family Archive TV
+# Family Archive Gallery
 
 ## Project Description and Requirements
 
 ### 1. Project Summary
 
-Family Archive TV is an offline Android TV application for browsing a private family photo archive stored on a removable USB drive.
+Family Archive Gallery is an offline Android TV application for browsing a private family photo archive stored on a removable USB drive.
 
 The application automatically discovers a predefined archive directory, treats each first-level subdirectory as a photo category, displays category cards with multi-image previews, provides a photo grid for each category, and supports full-screen photo viewing with D-pad navigation.
 
@@ -21,6 +21,7 @@ The application is intended for private use and will be distributed as a signed 
 - Provide a TV-native interface operated entirely with a D-pad remote.
 - Remain responsive with large archives and high-resolution photographs.
 - Work fully offline and keep all archive information on the device.
+- Check GitHub Releases for updates automatically at startup without blocking offline archive browsing.
 
 ### 3. Non-Goals
 
@@ -42,10 +43,12 @@ The first release will not include:
 | --- | --- |
 | Device class | Android TV devices |
 | Primary device | Xiaomi TV Stick, model `MITV-AESP0` |
+| Secondary device | Xiaomi TV Stick, model `MITV-AYFR0` |
 | Primary OS | Android TV 9 |
+| Secondary OS | Android TV 11 |
 | Minimum SDK | API 28 |
-| Target SDK | Latest stable SDK supported by the selected Android Studio version |
-| Initial target SDK baseline | API 36 |
+| Compile SDK | API 36 |
+| Target SDK | API 29 for Xiaomi Android TV 11 legacy USB compatibility |
 | Screen resolution | Optimized for 1920 × 1080 |
 | Input | D-pad remote control |
 | Network | Optional; required only for GitHub Release updates |
@@ -105,10 +108,9 @@ Android storage behavior differs by OS version. The application must select an a
 
 | Android version | API | Primary access mode |
 | --- | ---: | --- |
-| Android 9 | 28 | `READ_EXTERNAL_STORAGE` plus direct `File` access |
-| Android 10 | 29 | One-time Storage Access Framework directory grant |
-| Android 11+ | 30+ | `MANAGE_EXTERNAL_STORAGE` plus direct `File` access |
-| Fallback | 29+ | Persisted Storage Access Framework directory grant |
+| Android 9–12 | 28–32 | `READ_EXTERNAL_STORAGE`, legacy mode, and direct `File` access |
+| Android 13+ | 33+ | `MANAGE_EXTERNAL_STORAGE` plus direct `File` access |
+| Fallback | 33+ | Persisted Storage Access Framework directory grant |
 
 #### 7.1 Android 9
 
@@ -120,17 +122,18 @@ Android storage behavior differs by OS version. The application must select an a
 
 Android 9 does not expose `StorageVolume.getDirectory()`. Mount resolution must therefore be isolated behind a storage adapter and verified on the target Xiaomi firmware.
 
-#### 7.2 Android 10
+#### 7.2 Android 10–12
 
-Android 10 enforces scoped storage for applications targeting modern Android versions but does not provide `MANAGE_EXTERNAL_STORAGE`.
+The application deliberately targets API 29 and declares `requestLegacyExternalStorage="true"`. This preserves read-only direct USB access on Android TV 10–12, including Xiaomi Android TV 11 firmware that omits both DocumentsUI and the all-files settings activity.
 
-- Ask the user once to select `FamilyArchive` through `ACTION_OPEN_DOCUMENT_TREE`.
-- Persist the returned URI permission.
-- Reuse the permission after application and device restarts.
-- Scan with `ContentResolver` and `DocumentFile`.
+This is a deliberate private-sideload compatibility exception and is not suitable for Google Play publication. Raising `targetSdk` must be followed by a complete USB permission and discovery regression test on `MITV-AYFR0`.
+
+- Request `READ_EXTERNAL_STORAGE` (`Files and media`) once.
+- Enumerate the removable volume directly and find `FamilyArchive` automatically.
+- Keep the archive read-only.
 - Do not use MediaStore.
 
-#### 7.3 Android 11 and Later
+#### 7.3 Android 13 and Later
 
 - Declare `MANAGE_EXTERNAL_STORAGE`.
 - Check access with `Environment.isExternalStorageManager()`.
@@ -167,11 +170,12 @@ On startup, the application must:
 2. Check or request the required permission.
 3. Detect mounted removable storage.
 4. Locate the archive root.
-5. Load a cached index when available.
-6. Start an asynchronous validation or rescan.
+5. Retain currently visible scan state when available.
+6. Start an asynchronous rescan.
 7. Display categories progressively as results become available.
+8. Start one asynchronous GitHub Release update check for the current application process.
 
-The UI must never block while scanning storage.
+The UI must never block while scanning storage or checking for updates. A network error must not prevent offline archive browsing or delay D-pad focus feedback.
 
 #### 9.2 Category Screen
 
@@ -232,7 +236,7 @@ A refresh must occur:
 
 The application must listen for relevant media mount and removal broadcasts while it is active.
 
-The scanner must compare discovered files with the internal index using stable metadata such as:
+If incremental indexing is added later, the scanner must compare discovered files using stable metadata such as:
 
 - Volume identifier.
 - Relative path.
@@ -240,7 +244,17 @@ The scanner must compare discovered files with the internal index using stable m
 - File size.
 - Last-modified timestamp.
 
-No original photo content may be copied into the database.
+No original photo content may be copied into internal application storage.
+
+#### 9.6 Application Updates
+
+- Check the latest public GitHub Release automatically once when the application process starts.
+- Keep a manual **Check for updates** action as a fallback.
+- Do not download or install an update without an explicit D-pad action from the user.
+- Download the stable assets `familyarchivegallery.apk` and `familyarchivegallery.apk.sha256`.
+- Verify the APK SHA-256 checksum before opening the Android package installer.
+- Require the Android system confirmation screen for installation.
+- Treat update-check failures as non-blocking; all archive features must remain usable offline.
 
 ### 10. Navigation Requirements
 
@@ -275,21 +289,24 @@ Errors must be written in plain language and include a remote-accessible recover
 ### 12. Performance Requirements
 
 - Scanning and image decoding must run outside the main thread.
-- Cached metadata should appear before a full rescan finishes.
+- Existing visible scan state should remain usable while a refresh runs.
 - Category and grid thumbnails must be decoded near their display size, not at original resolution.
 - Full-screen images must be decoded near the device viewport size.
 - Memory usage must be bounded for low-memory TV sticks.
 - Only the current, previous, and next full-screen images may be retained or prefetched.
 - Thumbnail cache size must be configurable and bounded.
+- The decoded bitmap memory cache must be bounded between 8 MiB and 32 MiB according to available runtime memory.
 - Corrupt files must not terminate a scan or browsing session.
 - Large directories must be processed incrementally.
 - UI lists and grids must use stable item keys.
+- Primary TV actions must use lightweight focus feedback without unnecessary focus-scale or ripple animation on low-power devices.
+- Release builds must enable code and resource shrinking with R8.
 
 Initial performance targets:
 
-- The cached category screen should become usable within two seconds after startup under normal device conditions.
+- The category screen should become usable within two seconds after startup under normal device conditions.
 - Remote focus feedback should remain visually immediate during background scanning.
-- The application should support at least 20,000 indexed photos without loading all full-resolution files into memory.
+- The application should support archives of at least 20,000 photos without loading all full-resolution files into memory.
 
 Performance targets must be validated on the physical Xiaomi TV Stick rather than only on an emulator.
 
@@ -312,33 +329,31 @@ The application must not store:
 - Personal data outside the device.
 - Analytics or usage telemetry.
 
-Uninstalling the application may remove its database and thumbnail cache but must never remove or modify files on the USB drive.
+Uninstalling the application may remove its preferences and bitmap cache but must never remove or modify files on the USB drive.
 
-### 14. Proposed Technical Architecture
+### 14. Technical Architecture
 
 Technology baseline:
 
 - Kotlin.
 - Single-activity architecture.
 - Jetpack Compose for TV.
-- TV Material components.
+- Lightweight Compose focusable controls, with TV Material used only where it remains responsive.
 - Standard Compose lazy grids and lists.
-- Navigation Compose.
 - Coroutines and Flow.
-- Room for the archive index.
-- DataStore for preferences and persisted configuration.
-- Coil or an equivalent image loader with file and content URI support.
+- A sealed in-memory screen state managed by `ArchiveViewModel`.
+- `SharedPreferences` for small persisted grants and configuration.
+- Direct `ImageDecoder` loading with requested decode sizes and a bounded `LruCache`.
+- A direct scanner for the current archive; a persistent database index may be added later for very large archives.
 
 Suggested layers:
 
 ```text
 Compose TV UI
       ↓
-ViewModels
+ArchiveViewModel
       ↓
-Use cases / repositories
-      ↓
-Archive scanner and storage adapters
+Archive scanner, USB locator, and update repository
       ↓
 Direct File API or SAF Document API
       ↓
@@ -353,17 +368,12 @@ Suggested source structure:
 com.samdvich.familyarchivegallery/
 ├── MainActivity.kt
 ├── data/
-│   ├── database/
-│   ├── repository/
 │   ├── scanner/
-│   └── storage/
+│   ├── storage/
+│   └── update/
 ├── domain/
-│   ├── model/
-│   └── usecase/
+│   └── model/
 └── ui/
-    ├── categories/
-    ├── photos/
-    ├── viewer/
     ├── components/
     └── theme/
 ```
@@ -383,13 +393,14 @@ com.samdvich.familyarchivegallery/
 - Debug builds may be installed through Android Studio or ADB during development.
 - Production builds must use a dedicated release keystore.
 - The application version must use both `versionCode` and `versionName`.
-- Release APK filenames should include the version, for example:
+- Every GitHub Release must publish these stable asset names for the embedded updater:
 
 ```text
-family-archive-tv-1.0.0.apk
+familyarchivegallery.apk
+familyarchivegallery.apk.sha256
 ```
 
-- An upgrade must preserve the internal database, settings, and persisted SAF permissions when Android allows it.
+- An upgrade must preserve settings and persisted SAF permissions when Android allows it.
 - The project must not depend on Google Play Services.
 - Every published APK must be signed with the same private release key.
 - The application must verify the downloaded release checksum before opening the package installer.
@@ -404,8 +415,8 @@ Version 1.0 is complete when all of the following are true:
 3. The application appears in the Android TV launcher with a proper TV banner.
 4. All screens can be operated with the standard D-pad remote.
 5. Android 9 storage permission is requested and handled correctly.
-6. Android 11+ all-files access is requested and handled correctly.
-7. Android 10 can retain and reuse a SAF directory grant.
+6. Android 10–12 read-only legacy USB access is requested and handled correctly.
+7. Android 13+ can use all-files access or retain and reuse a SAF directory grant.
 8. A removable USB drive is detected without querying MediaStore.
 9. `FamilyArchive` is found automatically whenever direct access is available.
 10. Every non-empty first-level folder becomes a category.
@@ -414,16 +425,21 @@ Version 1.0 is complete when all of the following are true:
 13. Any supported photo can be opened full-screen.
 14. D-pad Left and Right navigate between adjacent photos.
 15. Back navigation restores the previously focused item.
-16. Reconnecting an updated USB drive refreshes the archive index.
+16. Reconnecting an updated USB drive refreshes the archive contents.
 17. Removing the USB drive during use does not crash the application.
 18. Original photo files are never changed or deleted.
 19. The application never inserts archive photos into MediaStore.
 20. The application works without an internet connection.
+21. The application checks for a newer GitHub Release automatically at startup without blocking browsing.
+22. An update is downloaded only after user confirmation and its checksum is verified before installation.
+23. The launcher uses a full-bleed 320 × 180 TV banner distinct from the square system icon.
+24. Focus movement between primary actions remains responsive on both target Xiaomi devices.
 
 ### 18. Assumptions
 
 - The default root directory is named `FamilyArchive`.
 - The USB filesystem is readable by the Android TV device.
+- FAT32 is the recommended USB filesystem for broad compatibility with both target Xiaomi devices.
 - The USB drive is physically attached through a compatible powered OTG adapter or hub.
 - `.nomedia` is added to the archive root before normal use.
 - Categories are represented only by first-level directories.

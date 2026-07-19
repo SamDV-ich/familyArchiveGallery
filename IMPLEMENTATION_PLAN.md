@@ -1,10 +1,10 @@
-# Family Archive TV
+# Family Archive Gallery
 
 ## Detailed Project Implementation Plan
 
 ### 1. Delivery Strategy
 
-Development should proceed in small, testable increments. Each phase must produce a build that can be run on an Android TV emulator or the physical Xiaomi TV Stick.
+Development should proceed in small, testable increments. Each phase must produce a build that can be run on an Android TV emulator or either physical Xiaomi TV Stick: `MITV-AESP0` on Android TV 9 and `MITV-AYFR0` on Android TV 11.
 
 The primary development target is Android TV 9 / API 28. Compatibility checks for Android 10 and Android 11 or later must begin early because storage behavior differs significantly between these versions.
 
@@ -16,12 +16,13 @@ The project should avoid building the complete UI before storage access has been
 | --- | --- |
 | M0 | Android Studio project builds and launches as a TV application |
 | M1 | Storage permissions and USB discovery work on supported Android versions |
-| M2 | Archive scanning and internal indexing work without MediaStore |
+| M2 | Archive scanning and in-memory catalog state work without MediaStore |
 | M3 | Category browser is usable with the remote |
 | M4 | Photo grid and thumbnail loading are complete |
 | M5 | Full-screen viewer and D-pad navigation are complete |
 | M6 | Automatic refresh, removal handling, and recovery states are complete |
 | M7 | Performance, compatibility, and release packaging are complete |
+| M8 | Automatic GitHub Release update checking and verified installation are complete |
 
 ### 3. Phase 0 — Project Bootstrap
 
@@ -39,7 +40,7 @@ Minimum SDK: API 28
 Recommended identifiers:
 
 ```text
-Project name: Family Archive TV
+Project name: Family Archive Gallery
 Namespace: com.samdvich.familyarchivegallery
 Application ID: com.samdvich.familyarchivegallery
 ```
@@ -53,10 +54,10 @@ Initial baseline:
 ```text
 minSdk: 28
 compileSdk: 36
-targetSdk: 36
+targetSdk: 29
 ```
 
-If the current stable Android Studio generates a newer stable compile and target SDK, keep the generated values. Do not lower `targetSdk` to 28 to bypass modern storage restrictions.
+The API 29 target is an intentional compatibility measure for this private sideload application. Xiaomi Android TV 11 firmware on `MITV-AYFR0` omits both DocumentsUI and the all-files settings screen; API 29 plus `requestLegacyExternalStorage` preserves read-only USB access. Keep compile SDK current and reassess this exception if distribution moves to Google Play. Do not raise the target without repeating the full USB permission and discovery test on that device.
 
 #### 3.3 Configure Compose for TV
 
@@ -79,6 +80,8 @@ TV Material: 1.1.0
 
 Use standard Compose lazy lists and grids. Do not build new code with deprecated TV-specific lazy layout APIs.
 
+Use lightweight focusable Compose actions for the main buttons. Avoid focus scaling, ripples, and other optional animations that cause visible input lag on low-power TV sticks.
+
 #### 3.4 Configure the TV Manifest
 
 Add:
@@ -87,9 +90,10 @@ Add:
 - `android.hardware.touchscreen` as not required.
 - `LEANBACK_LAUNCHER` activity category.
 - Landscape orientation.
-- `READ_EXTERNAL_STORAGE` with `maxSdkVersion="28"`.
+- `READ_EXTERNAL_STORAGE` with `maxSdkVersion="32"`.
+- `requestLegacyExternalStorage="true"` for Xiaomi Android TV 11 compatibility.
 - `MANAGE_EXTERNAL_STORAGE` for API 30 and later.
-- A 320 × 180 TV banner.
+- A full-bleed 320 × 180 TV banner designed independently from the square launcher/settings icon.
 
 Add `INTERNET` only for the GitHub Release updater and `REQUEST_INSTALL_PACKAGES` for handing a verified APK to the Android package installer.
 
@@ -109,20 +113,15 @@ applicationIdSuffix = ".debug"
 #### 3.6 Create Initial Package Structure
 
 ```text
-app/src/main/java/com/example/familyarchive/
+app/src/main/java/com/samdvich/familyarchivegallery/
 ├── MainActivity.kt
 ├── data/
-│   ├── database/
-│   ├── repository/
 │   ├── scanner/
-│   └── storage/
+│   ├── storage/
+│   └── update/
 ├── domain/
-│   ├── model/
-│   └── usecase/
+│   └── model/
 └── ui/
-    ├── categories/
-    ├── photos/
-    ├── viewer/
     ├── components/
     └── theme/
 ```
@@ -184,9 +183,8 @@ Create `StorageAccessCoordinator`.
 Runtime selection:
 
 ```text
-API 28      → LegacyDirectFileAccess
-API 29      → SafTreeAccess
-API 30+     → AllFilesDirectAccess, with SAF fallback
+API 28–32   → LegacyDirectFileAccess with READ_EXTERNAL_STORAGE
+API 33+     → AllFilesDirectAccess, with SAF fallback
 ```
 
 The coordinator owns permission state and exposes it as `StateFlow`.
@@ -224,20 +222,18 @@ Run device diagnostics during development and record:
 
 Debug diagnostics may contain paths, but release logging must redact them.
 
-#### 4.4 Android 10 Implementation
+#### 4.4 Android 10–12 Implementation
 
 Implement:
 
-- `ACTION_OPEN_DOCUMENT_TREE` launcher.
-- User selection of `FamilyArchive`.
-- `takePersistableUriPermission()`.
-- URI validation on future launches.
-- `DocumentFile` or `DocumentsContract` traversal.
-- Recovery when the grant is revoked.
+- Runtime `READ_EXTERNAL_STORAGE` (`Files and media`) request.
+- Legacy external storage mode for the API 29 target.
+- Direct removable-volume traversal without MediaStore.
+- Automatic discovery of `FamilyArchive`.
 
-The first-run UI must clearly state that Android 10 requires the archive directory to be selected once.
+The first-run UI must clearly state that file access is read-only and must be granted once.
 
-#### 4.5 Android 11+ Implementation
+#### 4.5 Android 13+ Implementation
 
 Implement:
 
@@ -264,8 +260,8 @@ Device tests:
 - USB attached before startup.
 - USB attached while application is open.
 - Archive root present and missing.
-- Android 10 persisted SAF grant.
-- Android 11+ all-files permission grant and denial.
+- Android 10–12 legacy read permission grant and denial.
+- Android 13+ all-files permission and SAF fallback.
 
 #### 4.7 Phase 1 Exit Criteria
 
@@ -274,7 +270,7 @@ Device tests:
 - Each Android version selects the correct access mode.
 - Permission denial does not cause a crash or dead end.
 
-### 5. Phase 2 — Archive Scanner and Index
+### 5. Phase 2 — Archive Scanner and Catalog State
 
 #### 5.1 Define Domain Models
 
@@ -358,23 +354,11 @@ Scanner behavior:
 
 Use coroutines on an IO dispatcher. Add cancellation checks during traversal so scanning stops promptly when the drive is removed or the screen is destroyed.
 
-#### 5.5 Add Room Database
+#### 5.5 Publish Scan State
 
-Create entities for:
+Store the current scan result in `ArchiveViewModel` state and expose immutable category/photo models to Compose. Keep filesystem work on the IO dispatcher and publish complete category batches so the UI does not observe partially built collections.
 
-- Storage source.
-- Category.
-- Photo.
-- Scan session.
-
-Recommended indices:
-
-- Unique source identifier.
-- Category source and relative path.
-- Photo source and relative path.
-- Photo category identifier.
-
-Use database transactions when replacing scan results so the UI never sees a partially inconsistent index.
+A Room-backed persistent index is a future optimization, not a version 1 requirement. Add it only after profiling shows that direct rescans and the current in-memory state do not meet the hardware targets.
 
 #### 5.6 Implement Incremental Updates
 
@@ -386,25 +370,17 @@ source ID + relative path + size + last-modified time
 
 Actions:
 
-- Insert newly discovered photos.
-- Update changed metadata.
-- Remove index records for missing photos.
-- Preserve unchanged thumbnail cache entries.
-- Invalidate thumbnails for changed photos.
+- Add newly discovered photos to the next published scan result.
+- Replace changed metadata.
+- Remove missing photos from the next result.
+- Preserve unchanged decoded bitmap cache entries.
+- Invalidate cached bitmaps for changed photos.
 
 Do not rely exclusively on directory modification timestamps because removable filesystem behavior varies.
 
-#### 5.7 Add Repository APIs
+#### 5.7 Add ViewModel APIs
 
-The repository should expose flows such as:
-
-```kotlin
-fun observeCategories(): Flow<List<PhotoCategory>>
-
-fun observePhotos(categoryId: String): Flow<List<PhotoItem>>
-
-suspend fun refresh(): ScanResult
-```
+The ViewModel exposes immutable `StateFlow` values for archive and update state plus explicit actions for refresh, permission recovery, navigation, update checking, downloading, and installation.
 
 #### 5.8 Phase 2 Tests
 
@@ -424,24 +400,24 @@ suspend fun refresh(): ScanResult
 
 #### 5.9 Phase 2 Exit Criteria
 
-- A sample archive is indexed correctly.
-- Cached data is available before a rescan completes.
-- Updating the USB contents produces correct database changes.
+- A sample archive is scanned correctly.
+- Existing visible data remains stable while a rescan runs.
+- Updating the USB contents produces the correct next scan result.
 - Original files remain unchanged.
 
 ### 6. Phase 3 — Navigation and Category Browser
 
-#### 6.1 Add Navigation Compose
+#### 6.1 Add Screen State Navigation
 
-Define routes:
+Define sealed screen states:
 
 ```text
-categories
-category/{categoryId}
-viewer/{categoryId}/{photoId}
+Categories
+Photos(categoryId)
+Viewer(categoryId, photoIndex)
 ```
 
-Pass stable identifiers through navigation rather than file paths or full serialized objects.
+Pass stable identifiers through state rather than file paths or full serialized objects. Navigation Compose may be introduced later if the screen hierarchy becomes more complex.
 
 #### 6.2 Implement the Application State Host
 
@@ -493,17 +469,16 @@ Use deterministic preview selection. The first implementation may use the first 
 
 #### 7.1 Add the Image Loader
 
-Configure an image loader that supports:
+Implement an image loader that supports:
 
 - `File` sources.
 - `content://` URI sources.
-- Memory cache.
-- Bounded disk cache.
+- A bitmap `LruCache` bounded to 8–32 MiB according to available runtime memory.
 - Requested decode size.
 - Error placeholders.
 - EXIF orientation.
 
-Do not request original-size decoding for thumbnails.
+Use `ImageDecoder` for both `File` and `content://` sources. Do not request original-size decoding for thumbnails and do not create a permanent disk copy of private USB photos.
 
 #### 7.2 Implement Category Preview Loading
 
@@ -629,7 +604,7 @@ When a drive is attached:
 When the active drive is removed:
 
 - Cancel active scans and image requests.
-- Close streams and database work related to the source.
+- Close streams and scanner work related to the source.
 - Leave the viewer or grid safely.
 - Show a no-storage state.
 - Retain cached metadata for fast reconnection unless the user clears it.
@@ -641,7 +616,7 @@ Provide a visible Refresh action on the category screen and recovery screens. Re
 #### 9.5 Phase 6 Tests
 
 - Attach and remove USB on every screen.
-- Remove USB during a database update.
+- Remove USB during a scan-state update.
 - Remove USB during image decoding.
 - Reinsert the same drive.
 - Insert a different drive.
@@ -654,6 +629,17 @@ Provide a visible Refresh action on the category screen and recovery screens. Re
 - Reconnected content is refreshed automatically.
 - A single scan runs at any given time.
 
+#### 9.7 Implement Application Updates
+
+- Query the public GitHub Releases `latest` endpoint once when the application process starts.
+- Keep the startup check asynchronous and independent of storage discovery.
+- Keep a manual **Check for updates** action.
+- Require a user action before downloading an APK; do not perform silent installation.
+- Download `familyarchivegallery.apk` and its `.sha256` asset.
+- Verify SHA-256 before passing the APK to the system package installer.
+- Handle offline, rate-limit, missing-release, and installer-permission states without blocking archive browsing.
+- Test an in-place update signed by the production key and verify that application data is retained.
+
 ### 10. Phase 7 — Performance and Stability
 
 #### 10.1 Profile the Physical Device
@@ -661,7 +647,7 @@ Provide a visible Refresh action on the category screen and recovery screens. Re
 Measure on the Xiaomi TV Stick:
 
 - Startup time.
-- Time to cached category screen.
+- Time to a usable category screen.
 - Full scan time for representative archives.
 - Thumbnail decoding time.
 - Memory usage in category, grid, and viewer screens.
@@ -670,7 +656,7 @@ Measure on the Xiaomi TV Stick:
 
 #### 10.2 Optimize Scanning
 
-- Batch database operations.
+- Publish scan results in bounded batches.
 - Limit concurrent filesystem work.
 - Emit bounded progress updates.
 - Avoid reopening unchanged files.
@@ -679,12 +665,20 @@ Measure on the Xiaomi TV Stick:
 #### 10.3 Optimize Image Loading
 
 - Set explicit requested sizes.
-- Tune memory cache for the TV Stick.
-- Bound disk cache size.
+- Bound the bitmap `LruCache` between 8 MiB and 32 MiB based on runtime memory.
+- Do not create permanent cached copies of private archive photos.
 - Disable unnecessary transformations.
 - Avoid keeping full-resolution bitmaps in screen state.
 
-#### 10.4 Run Long-Duration Tests
+#### 10.4 Optimize Remote Focus and Release Code
+
+- Use lightweight focusable actions for primary buttons.
+- Avoid unnecessary focus-scale and indication animations.
+- Keep network update checks and storage work off the main thread.
+- Enable R8 code and resource shrinking for release builds.
+- Compare D-pad response on both physical Xiaomi devices.
+
+#### 10.5 Run Long-Duration Tests
 
 - Browse continuously for at least one hour.
 - Navigate rapidly through several hundred photos.
@@ -692,11 +686,11 @@ Measure on the Xiaomi TV Stick:
 - Disconnect and reconnect storage several times.
 - Restart the application and device.
 
-#### 10.5 Phase 7 Exit Criteria
+#### 10.6 Phase 7 Exit Criteria
 
 - No out-of-memory crashes.
 - No unbounded cache growth.
-- No main-thread filesystem or database warnings.
+- No main-thread filesystem, image decode, or network warnings.
 - Remote navigation remains responsive during background work.
 
 ### 11. Phase 8 — Compatibility and Quality Assurance
@@ -705,10 +699,11 @@ Measure on the Xiaomi TV Stick:
 
 | Environment | Required coverage |
 | --- | --- |
-| Xiaomi TV Stick, Android 9 | Complete regression test |
+| `MITV-AESP0`, Android TV 9 / API 28 | Complete regression, USB permission, path resolution, and focus tests |
+| `MITV-AYFR0`, Android TV 11 | Complete regression, legacy USB permission, and missing-system-picker recovery tests |
 | Android TV API 28 emulator | UI and permission-state tests |
-| Android TV API 29 emulator/device | SAF setup and persisted access |
-| Android TV API 30+ emulator/device | All-files access and direct storage path |
+| Android TV API 29–32 emulator/device | Legacy read-only permission and direct storage tests |
+| Android TV API 33+ emulator/device | All-files access plus SAF fallback tests |
 | 1080p display | Complete UI validation |
 
 #### 11.2 Archive Test Sets
@@ -717,7 +712,7 @@ Maintain local test archives:
 
 - Small: 3 categories, 20 photos.
 - Medium: 20 categories, 2,000 photos.
-- Large: at least 20,000 indexed photos.
+- Large: at least 20,000 photos.
 - Invalid: corrupt, unreadable, hidden, and unsupported files.
 - Unicode: Cyrillic, accented Latin, spaces, and punctuation in names.
 - Mixed orientation and resolution.
@@ -745,9 +740,9 @@ Do not commit private family photos to source control. Use generated or explicit
 Finalize:
 
 - Application ID.
-- Application name.
-- Launcher icon.
-- 320 × 180 TV banner.
+- Application name `Family Archive Gallery`.
+- Square launcher/settings icon.
+- Full-bleed 320 × 180 TV banner without square-icon side padding.
 - Version name and version code.
 
 #### 12.2 Create and Protect the Signing Key
@@ -766,8 +761,9 @@ The same key is required to install future versions over an existing installatio
 
 - Disable verbose diagnostics.
 - Redact sensitive paths from logs.
-- Verify no internet permission is present.
+- Verify `INTERNET` is used only by the GitHub Release updater.
 - Verify debuggable is false.
+- Enable R8 code and resource shrinking.
 - Build a signed release APK.
 - Test upgrading from the previous signed build.
 - Configure GitHub Actions signing secrets as described in `RELEASING.md`.
@@ -775,16 +771,11 @@ The same key is required to install future versions over an existing installatio
 
 #### 12.4 APK Naming
 
-Use:
+GitHub Releases must use the stable updater asset names:
 
 ```text
-family-archive-tv-<version>.apk
-```
-
-Example:
-
-```text
-family-archive-tv-1.0.0.apk
+familyarchivegallery.apk
+familyarchivegallery.apk.sha256
 ```
 
 #### 12.5 Release Checklist
@@ -793,6 +784,8 @@ family-archive-tv-1.0.0.apk
 - Complete first-run permission flow.
 - Browse a real USB archive.
 - Restart the application.
+- Confirm the update check runs automatically once and does not block offline browsing.
+- Confirm the manual update check remains available.
 - Restart the device.
 - Reconnect the drive.
 - Upgrade from the previous APK.
@@ -809,7 +802,7 @@ Prioritize tests for:
 - Natural filename comparator.
 - Extension filtering.
 - Category creation rules.
-- Incremental index comparison.
+- Incremental scan comparison.
 - Viewer index movement.
 - Error-to-UI-state mapping.
 
@@ -817,9 +810,8 @@ Prioritize tests for:
 
 Use instrumented tests for:
 
-- Room database migrations and queries.
 - Persisted URI permission handling where practical.
-- Compose navigation.
+- Screen-state navigation.
 - Focus movement and restoration.
 - Permission and recovery screens.
 
@@ -828,6 +820,7 @@ Use instrumented tests for:
 Physical tests are mandatory for:
 
 - USB mounting and path resolution on Android 9.
+- Legacy `Files and media` permission and direct USB access on `MITV-AYFR0` / Android TV 11.
 - Real remote key behavior.
 - Memory pressure.
 - Large image decoding.
@@ -845,20 +838,21 @@ Mitigation:
 - Test on the Xiaomi TV Stick in Phase 1.
 - Keep SAF as a fallback.
 
-#### Risk: Android 10 Cannot Provide Modern Automatic All-Files Access
+#### Risk: Xiaomi Android TV 11 Omits Storage Permission Activities
 
 Mitigation:
 
-- Use one-time SAF directory selection.
-- Persist the grant.
-- Explain the exception clearly in first-run UI.
+- Target API 29 for this private sideload build.
+- Enable `requestLegacyExternalStorage` and request read-only file access.
+- Keep modern all-files and SAF paths for newer compliant firmware.
 
 #### Risk: Vendor Firmware Hides the All-Files Settings Screen
 
 Mitigation:
 
 - Detect failure to launch or grant access.
-- Offer SAF directory selection as fallback.
+- Use legacy read-only USB access on Android 10–12.
+- Offer SAF directory selection on firmware that implements DocumentsUI.
 
 #### Risk: Large Photos Cause Memory Pressure
 
@@ -868,6 +862,14 @@ Mitigation:
 - Bound caches.
 - Prefetch only adjacent viewer images.
 - Profile on physical hardware.
+
+#### Risk: Remote Focus Feels Slow on Low-Power Hardware
+
+Mitigation:
+
+- Use lightweight action controls without unnecessary focus animation.
+- Keep scanning, image decoding, and update checks off the main thread.
+- Validate D-pad response on `MITV-AESP0`, not only on the newer device or emulator.
 
 #### Risk: `.nomedia` Is Missing
 
@@ -884,7 +886,7 @@ Mitigation:
 - Use cancellable coroutine work.
 - Catch individual IO failures.
 - Cancel active work on removal events.
-- Commit database changes transactionally.
+- Publish immutable scan state only after a category or scan batch is complete.
 
 ### 15. Recommended First Development Sequence
 
@@ -897,16 +899,17 @@ The first practical coding sequence should be:
 5. Prove that the Xiaomi TV Stick can read a test file from USB.
 6. Find `FamilyArchive` automatically.
 7. Implement the storage abstraction.
-8. Add Android 10 SAF support.
-9. Add Android 11+ all-files support.
+8. Add Android 10–12 legacy read-only storage support.
+9. Add Android 13+ all-files and SAF fallback support.
 10. Implement the scanner and unit tests.
-11. Add Room indexing.
+11. Publish scanner results through ViewModel state.
 12. Build the category grid.
-13. Add thumbnail loading.
+13. Add bounded `ImageDecoder` thumbnail caching.
 14. Build the photo grid.
 15. Build the full-screen viewer.
 16. Add automatic refresh and removal handling.
-17. Profile, stabilize, and package the release APK.
+17. Add automatic GitHub Release checks and verified user-confirmed installation.
+18. Profile focus response, enable R8, stabilize, and package the release APK.
 
 ### 16. Definition of Done
 

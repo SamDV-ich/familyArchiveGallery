@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         ensureStorageAccess()
+        viewModel.checkForUpdates()
     }
 
     override fun onStart() {
@@ -122,18 +123,13 @@ class MainActivity : ComponentActivity() {
 
     private fun ensureStorageAccess() {
         when {
-            Build.VERSION.SDK_INT <= Build.VERSION_CODES.P -> {
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2 -> {
                 val granted = ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.READ_EXTERNAL_STORAGE
                 ) == PackageManager.PERMISSION_GRANTED
                 if (granted) viewModel.scanDirect(ARCHIVE_DIRECTORY_NAME)
                 else viewModel.requireAccess(AccessRequest.LEGACY_READ)
-            }
-            Build.VERSION.SDK_INT == Build.VERSION_CODES.Q -> {
-                val savedUri = preferences.getString(KEY_ARCHIVE_TREE_URI, null)?.let(Uri::parse)
-                if (savedUri == null) viewModel.requireAccess(AccessRequest.DOCUMENT_TREE)
-                else viewModel.scanDocumentTree(savedUri, ARCHIVE_DIRECTORY_NAME)
             }
             Environment.isExternalStorageManager() -> viewModel.scanDirect(ARCHIVE_DIRECTORY_NAME)
             else -> {

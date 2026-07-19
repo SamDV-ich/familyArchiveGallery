@@ -4,6 +4,8 @@
 
 Production APKs are built, signed, and published from the **Publish release APK** workflow in GitHub Actions. Start it with **Run workflow** and select `patch`, `minor`, or `major`.
 
+The workflow has a concurrency lock, so only one release can modify versions, tags, and release assets at a time.
+
 The updater in the Android TV application checks the latest published release from:
 
 ```text
@@ -60,7 +62,7 @@ The workflow writes the decoded keystore only to the temporary GitHub runner dir
 
 Open **Actions → Publish release APK → Run workflow**, select the version increment, and start the workflow.
 
-The first run publishes the current project version (`1.0.0`). After that, the selected increment is applied automatically:
+The first run publishes the current version configured in the project. After that, the selected increment is applied automatically:
 
 | Selection | Example |
 | --- | --- |
@@ -83,7 +85,7 @@ The workflow:
 2. Configures Java and Gradle.
 3. Restores the signing key from GitHub Secrets.
 4. Runs unit tests and release Android Lint.
-5. Builds the signed release APK.
+5. Builds the signed, R8-optimized release APK.
 6. Generates the SHA-256 checksum.
 7. Creates a GitHub Release with generated release notes.
 8. Uploads the APK and checksum assets.
@@ -94,9 +96,23 @@ Install the signed APK from the first GitHub Release, not `app-debug.apk`.
 
 The debug build uses a different application ID and debug signing key. It cannot be upgraded in place by the production APK.
 
+On first launch, grant the requested **Files and media** permission so the application can discover `FamilyArchive` on removable storage.
+
+## Xiaomi Android TV Storage Compatibility
+
+This private sideload build deliberately uses `targetSdk 29` with `requestLegacyExternalStorage="true"`. The setting preserves read-only direct USB access on `MITV-AYFR0` / Android TV 11, where the tested firmware does not provide a usable system folder picker or all-files settings screen.
+
+- This compatibility choice is not intended for Google Play distribution.
+- Do not raise `targetSdk` without repeating USB permission and discovery tests on `MITV-AYFR0`.
+- Android 9–12 use `READ_EXTERNAL_STORAGE` and direct read-only file access.
+- Android 13+ use all-files access where available, with SAF as a vendor-dependent fallback.
+- The archive must contain `.nomedia`; the application never adds photos to MediaStore.
+
 ## In-App Update Flow
 
-On the category screen, select **Check for updates**. If a newer release exists, the button changes to **Update to X.Y.Z**.
+The application checks the latest release automatically once when its process starts. The check is asynchronous: no network connection is required for archive browsing, and a failed check does not block the UI.
+
+The category screen also retains **Check for updates** as a manual fallback. If a newer release exists, the action changes to **Update to X.Y.Z**. Downloading never starts without this explicit user action.
 
 After the user selects it, the application:
 

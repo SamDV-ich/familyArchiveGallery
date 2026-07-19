@@ -3,6 +3,7 @@ package com.samdvich.familyarchivegallery.ui
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,7 +46,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.samdvich.familyarchivegallery.AccessRequest
@@ -139,16 +139,15 @@ fun FamilyArchiveApp(
             }
 
             if (uiState.status != ArchiveStatus.READY) {
-                Button(
+                ActionButton(
+                    label = updateButtonLabel(updateState),
                     onClick = onUpdateAction,
                     enabled = updateState.status != UpdateStatus.CHECKING &&
                         updateState.status != UpdateStatus.DOWNLOADING,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(36.dp)
-                ) {
-                    Text(updateButtonLabel(updateState))
-                }
+                )
             }
         }
     }
@@ -179,7 +178,7 @@ private fun StatusScreen(
         }
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.height(30.dp))
-            Button(onClick = onAction) { Text(actionLabel) }
+            ActionButton(label = actionLabel, onClick = onAction)
         }
     }
 }
@@ -207,15 +206,14 @@ private fun CategoriesScreen(
                     fontSize = 17.sp
                 )
             }
-            Button(
+            ActionButton(
+                label = updateButtonLabel(updateState),
                 onClick = onUpdateAction,
                 enabled = updateState.status != UpdateStatus.CHECKING &&
                     updateState.status != UpdateStatus.DOWNLOADING
-            ) {
-                Text(updateButtonLabel(updateState))
-            }
+            )
             Spacer(Modifier.width(14.dp))
-            Button(onClick = onRefresh) { Text("Обновить") }
+            ActionButton(label = "Обновить", onClick = onRefresh)
         }
 
         updateState.message?.let { message ->
@@ -440,6 +438,50 @@ private fun FocusableTile(onClick: () -> Unit, content: @Composable () -> Unit) 
             .clickable(onClick = onClick)
     ) {
         content()
+    }
+}
+
+@Composable
+private fun ActionButton(
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    var focused by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(8.dp)
+    val background = when {
+        !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        focused -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val foreground = if (focused && enabled) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .clip(shape)
+            .background(background)
+            .border(
+                width = if (focused) 2.dp else 1.dp,
+                color = if (focused) MaterialTheme.colorScheme.primary else Color.Transparent,
+                shape = shape
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .clickable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+    ) {
+        Text(text = label, color = foreground, fontSize = 16.sp)
     }
 }
 
