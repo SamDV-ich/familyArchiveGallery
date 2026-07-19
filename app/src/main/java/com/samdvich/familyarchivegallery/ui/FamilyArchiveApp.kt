@@ -1,4 +1,4 @@
-package com.example.familyarchivegallery.ui
+package com.samdvich.familyarchivegallery.ui
 
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
@@ -48,15 +48,15 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.example.familyarchivegallery.AccessRequest
-import com.example.familyarchivegallery.ArchiveScreen
-import com.example.familyarchivegallery.ArchiveStatus
-import com.example.familyarchivegallery.ArchiveUiState
-import com.example.familyarchivegallery.domain.model.PhotoCategory
-import com.example.familyarchivegallery.domain.model.PhotoItem
-import com.example.familyarchivegallery.data.update.UpdateStatus
-import com.example.familyarchivegallery.data.update.UpdateUiState
-import com.example.familyarchivegallery.ui.components.ArchiveImage
+import com.samdvich.familyarchivegallery.AccessRequest
+import com.samdvich.familyarchivegallery.ArchiveScreen
+import com.samdvich.familyarchivegallery.ArchiveStatus
+import com.samdvich.familyarchivegallery.ArchiveUiState
+import com.samdvich.familyarchivegallery.domain.model.PhotoCategory
+import com.samdvich.familyarchivegallery.domain.model.PhotoItem
+import com.samdvich.familyarchivegallery.data.update.UpdateStatus
+import com.samdvich.familyarchivegallery.data.update.UpdateUiState
+import com.samdvich.familyarchivegallery.ui.components.ArchiveImage
 
 @Composable
 fun FamilyArchiveApp(

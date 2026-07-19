@@ -1,4 +1,4 @@
-package com.example.familyarchivegallery.data.update
+package com.samdvich.familyarchivegallery.data.update
 
 object VersionOrder {
     fun isNewer(candidate: String, current: String): Boolean = compare(candidate, current) > 0

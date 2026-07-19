@@ -1,4 +1,4 @@
-package com.example.familyarchivegallery.domain.model
+package com.samdvich.familyarchivegallery.domain.model
 
 enum class PhotoSourceType {
     FILE,

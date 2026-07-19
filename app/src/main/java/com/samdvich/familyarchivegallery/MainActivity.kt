@@ -1,4 +1,4 @@
-package com.example.familyarchivegallery
+package com.samdvich.familyarchivegallery
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -20,9 +20,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModelProvider
-import com.example.familyarchivegallery.ui.FamilyArchiveApp
-import com.example.familyarchivegallery.ui.theme.FamilyArchiveGalleryTheme
-import com.example.familyarchivegallery.data.update.UpdateStatus
+import com.samdvich.familyarchivegallery.ui.FamilyArchiveApp
+import com.samdvich.familyarchivegallery.ui.theme.FamilyArchiveGalleryTheme
+import com.samdvich.familyarchivegallery.data.update.UpdateStatus
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -171,7 +171,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun handleUpdateAction(state: com.example.familyarchivegallery.data.update.UpdateUiState) {
+    private fun handleUpdateAction(state: com.samdvich.familyarchivegallery.data.update.UpdateUiState) {
         when (state.status) {
             UpdateStatus.AVAILABLE -> viewModel.downloadUpdate(::installDownloadedApk)
             UpdateStatus.READY_TO_INSTALL -> state.downloadedFile?.let { installDownloadedApk(File(it)) }

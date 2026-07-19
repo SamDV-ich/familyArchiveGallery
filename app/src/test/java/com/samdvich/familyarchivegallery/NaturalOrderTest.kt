@@ -1,6 +1,6 @@
-package com.example.familyarchivegallery
+package com.samdvich.familyarchivegallery
 
-import com.example.familyarchivegallery.domain.model.NaturalOrder
+import com.samdvich.familyarchivegallery.domain.model.NaturalOrder
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

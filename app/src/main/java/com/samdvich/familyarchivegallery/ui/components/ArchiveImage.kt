@@ -1,4 +1,4 @@
-package com.example.familyarchivegallery.ui.components
+package com.samdvich.familyarchivegallery.ui.components
 
 import android.graphics.ImageDecoder
 import android.net.Uri
@@ -15,8 +15,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import com.example.familyarchivegallery.domain.model.PhotoItem
-import com.example.familyarchivegallery.domain.model.PhotoSourceType
+import com.samdvich.familyarchivegallery.domain.model.PhotoItem
+import com.samdvich.familyarchivegallery.domain.model.PhotoSourceType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File

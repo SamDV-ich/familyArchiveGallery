@@ -1,6 +1,6 @@
-package com.example.familyarchivegallery
+package com.samdvich.familyarchivegallery
 
-import com.example.familyarchivegallery.data.update.VersionOrder
+import com.samdvich.familyarchivegallery.data.update.VersionOrder
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

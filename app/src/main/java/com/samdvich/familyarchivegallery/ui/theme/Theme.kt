@@ -1,4 +1,4 @@
-package com.example.familyarchivegallery.ui.theme
+package com.samdvich.familyarchivegallery.ui.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color

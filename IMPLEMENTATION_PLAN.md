@@ -40,11 +40,11 @@ Recommended identifiers:
 
 ```text
 Project name: Family Archive TV
-Namespace: com.example.familyarchive
-Application ID: com.example.familyarchive
+Namespace: com.samdvich.familyarchivegallery
+Application ID: com.samdvich.familyarchivegallery
 ```
 
-Replace `com.example` with an owner-controlled namespace before the first release.
+This is the permanent production application ID. Do not change it after the first release is installed.
 
 #### 3.2 Configure Android Versions
 

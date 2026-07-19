@@ -1,4 +1,4 @@
-package com.example.familyarchivegallery.data.update
+package com.samdvich.familyarchivegallery.data.update
 
 data class UpdateInfo(
     val versionName: String,

@@ -1,4 +1,4 @@
-package com.example.familyarchivegallery.data.storage
+package com.samdvich.familyarchivegallery.data.storage
 
 import android.content.Context
 import android.os.Build

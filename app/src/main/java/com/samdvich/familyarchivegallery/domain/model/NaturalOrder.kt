@@ -1,4 +1,4 @@
-package com.example.familyarchivegallery.domain.model
+package com.samdvich.familyarchivegallery.domain.model
 
 object NaturalOrder : Comparator<String> {
     override fun compare(first: String, second: String): Int {

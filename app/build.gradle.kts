@@ -9,7 +9,7 @@ val releaseKeyAlias = providers.environmentVariable("RELEASE_KEY_ALIAS")
 val releaseKeyPassword = providers.environmentVariable("RELEASE_KEY_PASSWORD")
 
 android {
-    namespace = "com.example.familyarchivegallery"
+    namespace = "com.samdvich.familyarchivegallery"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -17,7 +17,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.familyarchivegallery"
+        applicationId = "com.samdvich.familyarchivegallery"
         minSdk = 28
         targetSdk = 36
         versionCode = 1

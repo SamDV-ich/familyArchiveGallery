@@ -1,13 +1,13 @@
-package com.example.familyarchivegallery.data.scanner
+package com.samdvich.familyarchivegallery.data.scanner
 
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
-import com.example.familyarchivegallery.domain.model.ArchiveScanResult
-import com.example.familyarchivegallery.domain.model.NaturalOrder
-import com.example.familyarchivegallery.domain.model.PhotoCategory
-import com.example.familyarchivegallery.domain.model.PhotoItem
-import com.example.familyarchivegallery.domain.model.PhotoSourceType
+import com.samdvich.familyarchivegallery.domain.model.ArchiveScanResult
+import com.samdvich.familyarchivegallery.domain.model.NaturalOrder
+import com.samdvich.familyarchivegallery.domain.model.PhotoCategory
+import com.samdvich.familyarchivegallery.domain.model.PhotoItem
+import com.samdvich.familyarchivegallery.domain.model.PhotoSourceType
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.ArrayDeque

@@ -350,7 +350,7 @@ Storage-specific code must be hidden behind a common abstraction so screens do n
 Suggested source structure:
 
 ```text
-com.example.familyarchive/
+com.samdvich.familyarchivegallery/
 ├── MainActivity.kt
 ├── data/
 │   ├── database/

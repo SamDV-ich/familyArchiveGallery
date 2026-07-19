@@ -1,6 +1,6 @@
-package com.example.familyarchivegallery
+package com.samdvich.familyarchivegallery
 
-import com.example.familyarchivegallery.data.scanner.ArchiveScanner
+import com.samdvich.familyarchivegallery.data.scanner.ArchiveScanner
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

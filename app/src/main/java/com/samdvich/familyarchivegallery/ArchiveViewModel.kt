@@ -1,15 +1,15 @@
-package com.example.familyarchivegallery
+package com.samdvich.familyarchivegallery
 
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.familyarchivegallery.data.scanner.ArchiveScanner
-import com.example.familyarchivegallery.data.storage.UsbStorageLocator
-import com.example.familyarchivegallery.data.update.GitHubUpdateRepository
-import com.example.familyarchivegallery.data.update.UpdateStatus
-import com.example.familyarchivegallery.data.update.UpdateUiState
-import com.example.familyarchivegallery.domain.model.PhotoCategory
+import com.samdvich.familyarchivegallery.data.scanner.ArchiveScanner
+import com.samdvich.familyarchivegallery.data.storage.UsbStorageLocator
+import com.samdvich.familyarchivegallery.data.update.GitHubUpdateRepository
+import com.samdvich.familyarchivegallery.data.update.UpdateStatus
+import com.samdvich.familyarchivegallery.data.update.UpdateUiState
+import com.samdvich.familyarchivegallery.domain.model.PhotoCategory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -253,7 +253,7 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
     private sealed interface ScanOutcome {
         data object NoStorage : ScanOutcome
         data object ArchiveNotFound : ScanOutcome
-        data class Success(val result: com.example.familyarchivegallery.domain.model.ArchiveScanResult) : ScanOutcome
+        data class Success(val result: com.samdvich.familyarchivegallery.domain.model.ArchiveScanResult) : ScanOutcome
         data class Failure(val message: String) : ScanOutcome
     }
 }
