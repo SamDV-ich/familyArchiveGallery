@@ -726,6 +726,9 @@ Do not commit private family photos to source control. Use generated or explicit
 - Verify that focused scaling does not clip cards.
 - Verify no touch-only interaction exists.
 - Verify Back behavior on every screen.
+- Verify complete English and Russian UI by changing the Android TV system language.
+- Verify that **Check for updates** and **Refresh photo list** are clearly distinguishable and are not placed beside each other.
+- Verify each empty-archive diagnostic with matching USB folder structures.
 
 #### 11.4 Phase 8 Exit Criteria
 

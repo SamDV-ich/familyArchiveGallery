@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,6 +54,7 @@ import com.samdvich.familyarchivegallery.AccessRequest
 import com.samdvich.familyarchivegallery.ArchiveScreen
 import com.samdvich.familyarchivegallery.ArchiveStatus
 import com.samdvich.familyarchivegallery.ArchiveUiState
+import com.samdvich.familyarchivegallery.R
 import com.samdvich.familyarchivegallery.domain.model.PhotoCategory
 import com.samdvich.familyarchivegallery.domain.model.PhotoItem
 import com.samdvich.familyarchivegallery.data.update.UpdateStatus
@@ -79,31 +82,31 @@ fun FamilyArchiveApp(
         ) {
             when (uiState.status) {
                 ArchiveStatus.CHECKING -> StatusScreen(
-                    title = "Поиск семейного архива",
-                    message = "Проверяем подключённые USB-накопители…"
+                    title = stringResource(R.string.search_archive_title),
+                    message = stringResource(R.string.search_archive_message)
                 )
                 ArchiveStatus.ACCESS_REQUIRED -> StatusScreen(
-                    title = "Требуется доступ к фотографиям",
+                    title = stringResource(R.string.access_required_title),
                     message = uiState.message ?: accessMessage(uiState.accessRequest),
                     actionLabel = accessActionLabel(uiState.accessRequest),
                     onAction = { uiState.accessRequest?.let(onGrantAccess) }
                 )
                 ArchiveStatus.NO_STORAGE -> StatusScreen(
-                    title = "USB-накопитель не подключён",
+                    title = stringResource(R.string.no_usb_title),
                     message = uiState.message,
-                    actionLabel = "Проверить снова",
+                    actionLabel = stringResource(R.string.retry_search),
                     onAction = onRefresh
                 )
                 ArchiveStatus.ARCHIVE_NOT_FOUND -> StatusScreen(
-                    title = "Архив не найден",
+                    title = stringResource(R.string.archive_not_found_title),
                     message = uiState.message,
-                    actionLabel = "Проверить снова",
+                    actionLabel = stringResource(R.string.retry_search),
                     onAction = onRefresh
                 )
                 ArchiveStatus.ERROR -> StatusScreen(
-                    title = "Не удалось открыть архив",
+                    title = stringResource(R.string.archive_open_error_title),
                     message = uiState.message,
-                    actionLabel = "Повторить",
+                    actionLabel = stringResource(R.string.retry),
                     onAction = onRefresh
                 )
                 ArchiveStatus.READY -> {
@@ -199,9 +202,17 @@ private fun CategoriesScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Семейный архив", fontSize = 34.sp)
+                Text(stringResource(R.string.family_archive_title), fontSize = 34.sp)
                 Text(
-                    text = if (state.isScanning) "Обновление…" else "${state.categories.size} категорий",
+                    text = if (state.isScanning) {
+                        stringResource(R.string.scanning_archive)
+                    } else {
+                        pluralStringResource(
+                            R.plurals.category_count,
+                            state.categories.size,
+                            state.categories.size
+                        )
+                    },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 17.sp
                 )
@@ -212,8 +223,6 @@ private fun CategoriesScreen(
                 enabled = updateState.status != UpdateStatus.CHECKING &&
                     updateState.status != UpdateStatus.DOWNLOADING
             )
-            Spacer(Modifier.width(14.dp))
-            ActionButton(label = "Обновить", onClick = onRefresh)
         }
 
         updateState.message?.let { message ->
@@ -231,7 +240,7 @@ private fun CategoriesScreen(
 
         if (!state.hasNoMediaMarker) {
             Text(
-                text = "В папке FamilyArchive отсутствует файл .nomedia. Фотографии могут появиться в системной галерее.",
+                text = stringResource(R.string.nomedia_warning),
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(horizontal = 58.dp, vertical = 4.dp),
                 fontSize = 16.sp
@@ -240,19 +249,32 @@ private fun CategoriesScreen(
 
         if (state.categories.isEmpty()) {
             StatusScreen(
-                title = "Архив пуст",
-                message = state.message ?: "Добавьте папки с фотографиями в FamilyArchive"
+                title = stringResource(R.string.archive_empty_title),
+                message = state.message ?: stringResource(R.string.archive_empty_message),
+                actionLabel = stringResource(R.string.refresh_photo_list),
+                onAction = onRefresh
             )
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
-                contentPadding = PaddingValues(start = 52.dp, end = 52.dp, top = 14.dp, bottom = 42.dp),
+                contentPadding = PaddingValues(start = 52.dp, end = 52.dp, top = 14.dp, bottom = 18.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier.weight(1f)
             ) {
                 items(state.categories, key = { it.id }) { category ->
                     CategoryCard(category = category, onClick = { onOpenCategory(category.id) })
                 }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 58.dp, end = 58.dp, top = 8.dp, bottom = 28.dp)
+            ) {
+                ActionButton(
+                    label = stringResource(R.string.refresh_photo_list),
+                    onClick = onRefresh
+                )
             }
         }
     }
@@ -277,7 +299,11 @@ private fun CategoryCard(category: PhotoCategory, onClick: () -> Unit) {
                     fontSize = 20.sp
                 )
                 Text(
-                    text = "${category.photos.size} фото",
+                    text = pluralStringResource(
+                        R.plurals.photo_count,
+                        category.photos.size,
+                        category.photos.size
+                    ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 15.sp
                 )
@@ -322,7 +348,11 @@ private fun PhotosScreen(category: PhotoCategory, onOpenPhoto: (Int) -> Unit) {
         Column(modifier = Modifier.padding(start = 58.dp, top = 38.dp, bottom = 16.dp)) {
             Text(category.name, fontSize = 32.sp)
             Text(
-                "${category.photos.size} фото",
+                pluralStringResource(
+                    R.plurals.photo_count,
+                    category.photos.size,
+                    category.photos.size
+                ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 17.sp
             )
@@ -485,24 +515,29 @@ private fun ActionButton(
     }
 }
 
+@Composable
 private fun accessMessage(request: AccessRequest?): String = when (request) {
-    AccessRequest.LEGACY_READ -> "Разрешите приложению читать файлы на подключённом USB-накопителе."
-    AccessRequest.DOCUMENT_TREE -> "Выберите папку FamilyArchive один раз. Android сохранит доступ после перезагрузки."
-    AccessRequest.ALL_FILES -> "Выберите папку FamilyArchive или корень USB-накопителя. Android сохранит доступ после перезагрузки."
-    null -> "Предоставьте доступ к папке семейного архива."
+    AccessRequest.LEGACY_READ -> stringResource(R.string.access_legacy_message)
+    AccessRequest.DOCUMENT_TREE -> stringResource(R.string.access_document_tree_message)
+    AccessRequest.ALL_FILES -> stringResource(R.string.access_all_files_message)
+    null -> stringResource(R.string.access_default_message)
 }
 
+@Composable
 private fun accessActionLabel(request: AccessRequest?): String = when (request) {
-    AccessRequest.DOCUMENT_TREE, AccessRequest.ALL_FILES -> "Выбрать папку"
-    AccessRequest.LEGACY_READ, null -> "Предоставить доступ"
+    AccessRequest.DOCUMENT_TREE, AccessRequest.ALL_FILES -> stringResource(R.string.select_folder)
+    AccessRequest.LEGACY_READ, null -> stringResource(R.string.grant_access)
 }
 
+@Composable
 private fun updateButtonLabel(state: UpdateUiState): String = when (state.status) {
-    UpdateStatus.IDLE -> "Проверить обновления"
-    UpdateStatus.CHECKING -> "Проверка…"
-    UpdateStatus.UP_TO_DATE -> "Проверить снова"
-    UpdateStatus.AVAILABLE -> "Обновить до ${state.info?.versionName.orEmpty()}"
-    UpdateStatus.DOWNLOADING -> "Загрузка ${state.progress}%"
-    UpdateStatus.READY_TO_INSTALL -> "Установить обновление"
-    UpdateStatus.ERROR -> "Повторить обновление"
+    UpdateStatus.IDLE, UpdateStatus.UP_TO_DATE -> stringResource(R.string.check_updates)
+    UpdateStatus.CHECKING -> stringResource(R.string.checking_updates)
+    UpdateStatus.AVAILABLE -> stringResource(
+        R.string.update_to_version,
+        state.info?.versionName.orEmpty()
+    )
+    UpdateStatus.DOWNLOADING -> stringResource(R.string.downloading_update, state.progress)
+    UpdateStatus.READY_TO_INSTALL -> stringResource(R.string.install_update)
+    UpdateStatus.ERROR -> stringResource(R.string.retry_update)
 }

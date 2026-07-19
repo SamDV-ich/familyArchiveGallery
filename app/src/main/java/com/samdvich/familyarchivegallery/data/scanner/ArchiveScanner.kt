@@ -16,17 +16,25 @@ import java.util.UUID
 class ArchiveScanner(private val context: Context) {
     fun scanFileRoot(root: File): ArchiveScanResult {
         val sourceId = root.parentFile?.name ?: root.absolutePath
-        val categories = root.listFiles().orEmpty()
+        val rootChildren = root.listFiles().orEmpty()
+        val categoryDirectories = rootChildren
             .asSequence()
             .filter { it.isDirectory && !it.isHidden && !it.name.startsWith('.') }
             .sortedWith(compareBy(NaturalOrder) { it.name })
+            .toList()
+        val categories = categoryDirectories
+            .asSequence()
             .mapNotNull { category -> scanFileCategory(sourceId, root, category) }
             .toList()
 
         return ArchiveScanResult(
             sourceId = sourceId,
             categories = categories,
-            hasNoMediaMarker = File(root, ".nomedia").isFile
+            hasNoMediaMarker = File(root, ".nomedia").isFile,
+            firstLevelDirectoryCount = categoryDirectories.size,
+            rootSupportedPhotoCount = rootChildren.count {
+                it.isFile && it.canRead() && isSupportedImage(it.name)
+            }
         )
     }
 
@@ -41,17 +49,25 @@ class ArchiveScanner(private val context: Context) {
                 ?: error("$archiveName was not found in the selected directory")
         }
         val sourceId = selectedUri.toString()
-        val categories = root.listFiles()
+        val rootChildren = root.listFiles()
+        val categoryDirectories = rootChildren
             .asSequence()
             .filter { it.isDirectory && !it.name.orEmpty().startsWith('.') }
             .sortedWith(compareBy(NaturalOrder) { it.name.orEmpty() })
+            .toList()
+        val categories = categoryDirectories
+            .asSequence()
             .mapNotNull { category -> scanDocumentCategory(sourceId, category) }
             .toList()
 
         return ArchiveScanResult(
             sourceId = sourceId,
             categories = categories,
-            hasNoMediaMarker = root.findFile(".nomedia")?.isFile == true
+            hasNoMediaMarker = root.findFile(".nomedia")?.isFile == true,
+            firstLevelDirectoryCount = categoryDirectories.size,
+            rootSupportedPhotoCount = rootChildren.count {
+                it.isFile && isSupportedImage(it.name.orEmpty())
+            }
         )
     }
 

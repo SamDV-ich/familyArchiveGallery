@@ -19,6 +19,7 @@ The application is intended for private use and will be distributed as a signed 
 - Prevent archive photos from appearing in the system media library.
 - Require as little user interaction as the Android storage model allows.
 - Provide a TV-native interface operated entirely with a D-pad remote.
+- Select English or Russian UI text automatically from the Android TV system language.
 - Remain responsive with large archives and high-resolution photographs.
 - Work fully offline and keep all archive information on the device.
 - Check GitHub Releases for updates automatically at startup without blocking offline archive browsing.
@@ -192,7 +193,7 @@ Additional behavior:
 - Numeric prefixes such as `01`, `02`, and `10` must sort naturally.
 - The initial layout should use three or four cards per row at 1080p.
 - The previously focused category should be restored after returning from another screen.
-- An explicit Refresh action must be available.
+- An explicit **Refresh photo list** action must be available away from the application-update action. It appears below empty-state guidance or in a separate footer below the category grid.
 
 #### 9.3 Photo Grid Screen
 
@@ -277,6 +278,8 @@ The application must provide dedicated UI states for:
 - USB drive detected but not mounted.
 - Archive root not found.
 - Archive root found but empty.
+- Archive root contains photos directly instead of first-level category folders.
+- Archive root contains no first-level category folders.
 - Archive is currently being scanned.
 - `.nomedia` is missing.
 - Unsupported or damaged image.
@@ -285,6 +288,8 @@ The application must provide dedicated UI states for:
 - Unexpected read error.
 
 Errors must be written in plain language and include a remote-accessible recovery action when recovery is possible.
+
+All user-facing application text must come from Android string resources. English is the default locale and Russian is provided through `values-ru`; Android selects the language from the device configuration.
 
 ### 12. Performance Requirements
 
@@ -434,6 +439,8 @@ Version 1.0 is complete when all of the following are true:
 22. An update is downloaded only after user confirmation and its checksum is verified before installation.
 23. The launcher uses a full-bleed 320 × 180 TV banner distinct from the square system icon.
 24. Focus movement between primary actions remains responsive on both target Xiaomi devices.
+25. Russian and English UI text follows the Android TV system language without mixed-language screens.
+26. Empty-archive guidance explains whether category folders are missing, photos are placed directly in `FamilyArchive`, or formats are unsupported.
 
 ### 18. Assumptions
 

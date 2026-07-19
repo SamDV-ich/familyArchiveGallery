@@ -2,6 +2,7 @@ package com.samdvich.familyarchivegallery
 
 import android.app.Application
 import android.net.Uri
+import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.samdvich.familyarchivegallery.data.scanner.ArchiveScanner
@@ -80,13 +81,19 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
             }.fold(
                 onSuccess = { update ->
                     if (update == null) {
-                        UpdateUiState(status = UpdateStatus.UP_TO_DATE, message = "Установлена последняя версия")
+                        UpdateUiState(
+                            status = UpdateStatus.UP_TO_DATE,
+                            message = text(R.string.latest_version_installed)
+                        )
                     } else {
                         UpdateUiState(status = UpdateStatus.AVAILABLE, info = update)
                     }
                 },
-                onFailure = { error ->
-                    UpdateUiState(status = UpdateStatus.ERROR, message = error.message ?: "Не удалось проверить обновления")
+                onFailure = {
+                    UpdateUiState(
+                        status = UpdateStatus.ERROR,
+                        message = text(R.string.update_check_failed)
+                    )
                 }
             )
         }
@@ -110,10 +117,10 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
                     downloadedFile = file.absolutePath
                 )
                 onReadyToInstall(file)
-            }.onFailure { error ->
+            }.onFailure {
                 _updateState.value = _updateState.value.copy(
                     status = UpdateStatus.ERROR,
-                    message = error.message ?: "Не удалось загрузить обновление"
+                    message = text(R.string.update_download_failed)
                 )
             }
         }
@@ -151,7 +158,7 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
             runCatching { scanner.scanDocumentTree(uri, archiveName) }
                 .fold(
                     onSuccess = { ScanOutcome.Success(it) },
-                    onFailure = { ScanOutcome.Failure(it.message ?: "The selected archive cannot be read") }
+                    onFailure = { ScanOutcome.Failure(text(R.string.selected_archive_unreadable)) }
                 )
         }
     }
@@ -206,7 +213,7 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                ScanOutcome.Failure(error.message ?: "Unexpected storage error")
+                ScanOutcome.Failure(text(R.string.unexpected_storage_error))
             }
             applyOutcome(outcome)
         }
@@ -216,11 +223,11 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
         _uiState.value = when (outcome) {
             ScanOutcome.NoStorage -> ArchiveUiState(
                 status = ArchiveStatus.NO_STORAGE,
-                message = "Connect a USB drive containing the FamilyArchive folder"
+                message = text(R.string.connect_usb_message)
             )
             ScanOutcome.ArchiveNotFound -> ArchiveUiState(
                 status = ArchiveStatus.ARCHIVE_NOT_FOUND,
-                message = "The FamilyArchive folder was not found on the connected USB drive"
+                message = text(R.string.archive_folder_not_found_message)
             )
             is ScanOutcome.Failure -> ArchiveUiState(
                 status = ArchiveStatus.ERROR,
@@ -232,7 +239,15 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
                 isScanning = false,
                 hasNoMediaMarker = outcome.result.hasNoMediaMarker,
                 message = if (outcome.result.categories.isEmpty()) {
-                    "The archive does not contain any supported photos"
+                    when {
+                        outcome.result.rootSupportedPhotoCount > 0 -> {
+                            text(R.string.archive_root_photos_message)
+                        }
+                        outcome.result.firstLevelDirectoryCount == 0 -> {
+                            text(R.string.archive_no_category_folders)
+                        }
+                        else -> text(R.string.archive_empty_message)
+                    }
                 } else null
             )
         }
@@ -256,4 +271,6 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
         data class Success(val result: com.samdvich.familyarchivegallery.domain.model.ArchiveScanResult) : ScanOutcome
         data class Failure(val message: String) : ScanOutcome
     }
+
+    private fun text(@StringRes resourceId: Int): String = getApplication<Application>().getString(resourceId)
 }

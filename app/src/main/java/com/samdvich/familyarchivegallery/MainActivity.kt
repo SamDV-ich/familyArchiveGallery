@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         if (uri == null) {
-            viewModel.requireAccess(AccessRequest.DOCUMENT_TREE, "Папка не выбрана")
+            viewModel.requireAccess(AccessRequest.DOCUMENT_TREE, getString(R.string.folder_not_selected))
             return@registerForActivityResult
         }
         runCatching {
@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
         if (pending != null && canInstallPackages()) {
             launchPackageInstaller(pending)
         } else if (pending != null) {
-            viewModel.reportUpdateError("Разрешение на установку приложений не предоставлено")
+            viewModel.reportUpdateError(getString(R.string.install_permission_denied))
         }
     }
 
@@ -169,7 +169,7 @@ class MainActivity : ComponentActivity() {
             } catch (_: ActivityNotFoundException) {
                 viewModel.requireAccess(
                     AccessRequest.ALL_FILES,
-                    "Системный выбор папки недоступен на этой приставке"
+                    getString(R.string.system_folder_picker_unavailable)
                 )
             }
         }
@@ -186,7 +186,7 @@ class MainActivity : ComponentActivity() {
 
     private fun installDownloadedApk(apkFile: File) {
         if (!apkFile.isFile) {
-            viewModel.reportUpdateError("Загруженный APK больше не доступен")
+            viewModel.reportUpdateError(getString(R.string.downloaded_apk_unavailable))
             return
         }
         pendingUpdateFile = apkFile
@@ -215,7 +215,7 @@ class MainActivity : ComponentActivity() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         runCatching { startActivity(installIntent) }
-            .onFailure { viewModel.reportUpdateError("Не удалось открыть системный установщик") }
+            .onFailure { viewModel.reportUpdateError(getString(R.string.package_installer_unavailable)) }
     }
 
     companion object {

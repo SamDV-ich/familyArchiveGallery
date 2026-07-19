@@ -1,0 +1,55 @@
+<resources>
+    <string name="app_name">Семейный фотоархив</string>
+    <string name="search_archive_title">Поиск семейного архива</string>
+    <string name="search_archive_message">Проверяем подключённые USB-накопители…</string>
+    <string name="access_required_title">Требуется доступ к фотографиям</string>
+    <string name="no_usb_title">USB-накопитель не подключён</string>
+    <string name="archive_not_found_title">Архив не найден</string>
+    <string name="archive_open_error_title">Не удалось открыть архив</string>
+    <string name="retry_search">Повторить поиск</string>
+    <string name="retry">Повторить</string>
+    <string name="family_archive_title">Семейный архив</string>
+    <string name="scanning_archive">Сканирование…</string>
+    <plurals name="category_count">
+        <item quantity="one">%1$d категория</item>
+        <item quantity="few">%1$d категории</item>
+        <item quantity="many">%1$d категорий</item>
+        <item quantity="other">%1$d категории</item>
+    </plurals>
+    <plurals name="photo_count">
+        <item quantity="one">%1$d фотография</item>
+        <item quantity="few">%1$d фотографии</item>
+        <item quantity="many">%1$d фотографий</item>
+        <item quantity="other">%1$d фотографии</item>
+    </plurals>
+    <string name="refresh_photo_list">Обновить список фотографий</string>
+    <string name="nomedia_warning">В папке FamilyArchive отсутствует файл .nomedia. Фотографии могут появиться в системной галерее.</string>
+    <string name="archive_empty_title">Архив пуст</string>
+    <string name="archive_empty_message">Поддерживаемые фотографии не найдены. Форматы: JPG, JPEG, PNG, WebP, BMP, HEIC и HEIF.</string>
+    <string name="archive_no_category_folders">Папка FamilyArchive найдена, но в ней нет папок-категорий. Создайте внутри FamilyArchive папки и поместите в них фотографии.</string>
+    <string name="archive_root_photos_message">Фотографии найдены непосредственно в FamilyArchive. Переместите их в папки-категории первого уровня, например FamilyArchive/Семья/photo.jpg.</string>
+    <string name="access_legacy_message">Разрешите приложению читать файлы на подключённом USB-накопителе.</string>
+    <string name="access_document_tree_message">Выберите папку FamilyArchive один раз. Android сохранит доступ после перезагрузки.</string>
+    <string name="access_all_files_message">Выберите папку FamilyArchive или корень USB-накопителя. Android сохранит доступ после перезагрузки.</string>
+    <string name="access_default_message">Предоставьте доступ к папке семейного архива.</string>
+    <string name="select_folder">Выбрать папку</string>
+    <string name="grant_access">Предоставить доступ</string>
+    <string name="check_updates">Проверить обновления</string>
+    <string name="checking_updates">Проверка…</string>
+    <string name="update_to_version">Обновить до %1$s</string>
+    <string name="downloading_update">Загрузка %1$d%%</string>
+    <string name="install_update">Установить обновление</string>
+    <string name="retry_update">Повторить обновление</string>
+    <string name="latest_version_installed">Установлена последняя версия</string>
+    <string name="update_check_failed">Не удалось проверить обновления</string>
+    <string name="update_download_failed">Не удалось загрузить обновление</string>
+    <string name="selected_archive_unreadable">Выбранный архив невозможно прочитать</string>
+    <string name="unexpected_storage_error">Непредвиденная ошибка доступа к накопителю</string>
+    <string name="connect_usb_message">Подключите USB-накопитель с папкой FamilyArchive.</string>
+    <string name="archive_folder_not_found_message">На подключённом USB-накопителе не найдена папка FamilyArchive.</string>
+    <string name="folder_not_selected">Папка не выбрана</string>
+    <string name="install_permission_denied">Разрешение на установку приложений не предоставлено</string>
+    <string name="system_folder_picker_unavailable">Системный выбор папки недоступен на этой приставке</string>
+    <string name="downloaded_apk_unavailable">Загруженный APK больше не доступен</string>
+    <string name="package_installer_unavailable">Не удалось открыть системный установщик</string>
+</resources>

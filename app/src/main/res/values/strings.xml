@@ -1,3 +1,51 @@
 <resources>
     <string name="app_name">Family Archive Gallery</string>
+    <string name="search_archive_title">Searching for the family archive</string>
+    <string name="search_archive_message">Checking connected USB drives…</string>
+    <string name="access_required_title">Photo access required</string>
+    <string name="no_usb_title">USB drive is not connected</string>
+    <string name="archive_not_found_title">Archive not found</string>
+    <string name="archive_open_error_title">Could not open the archive</string>
+    <string name="retry_search">Search again</string>
+    <string name="retry">Retry</string>
+    <string name="family_archive_title">Family archive</string>
+    <string name="scanning_archive">Scanning…</string>
+    <plurals name="category_count">
+        <item quantity="one">%1$d category</item>
+        <item quantity="other">%1$d categories</item>
+    </plurals>
+    <plurals name="photo_count">
+        <item quantity="one">%1$d photo</item>
+        <item quantity="other">%1$d photos</item>
+    </plurals>
+    <string name="refresh_photo_list">Refresh photo list</string>
+    <string name="nomedia_warning">The FamilyArchive folder does not contain a .nomedia file. Photos may appear in the system gallery.</string>
+    <string name="archive_empty_title">Archive is empty</string>
+    <string name="archive_empty_message">No supported photos were found. Supported formats: JPG, JPEG, PNG, WebP, BMP, HEIC, and HEIF.</string>
+    <string name="archive_no_category_folders">FamilyArchive was found, but it has no category folders. Create folders inside FamilyArchive and place photos in them.</string>
+    <string name="archive_root_photos_message">Photos were found directly in FamilyArchive. Move them into first-level category folders, for example FamilyArchive/Family/photo.jpg.</string>
+    <string name="access_legacy_message">Allow the application to read files on the connected USB drive.</string>
+    <string name="access_document_tree_message">Select the FamilyArchive folder once. Android will retain access after a restart.</string>
+    <string name="access_all_files_message">Select the FamilyArchive folder or the USB drive root. Android will retain access after a restart.</string>
+    <string name="access_default_message">Grant access to the family archive folder.</string>
+    <string name="select_folder">Select folder</string>
+    <string name="grant_access">Grant access</string>
+    <string name="check_updates">Check for updates</string>
+    <string name="checking_updates">Checking…</string>
+    <string name="update_to_version">Update to %1$s</string>
+    <string name="downloading_update">Downloading %1$d%%</string>
+    <string name="install_update">Install update</string>
+    <string name="retry_update">Retry update</string>
+    <string name="latest_version_installed">The latest version is installed</string>
+    <string name="update_check_failed">Could not check for updates</string>
+    <string name="update_download_failed">Could not download the update</string>
+    <string name="selected_archive_unreadable">The selected archive cannot be read</string>
+    <string name="unexpected_storage_error">Unexpected storage error</string>
+    <string name="connect_usb_message">Connect a USB drive containing the FamilyArchive folder.</string>
+    <string name="archive_folder_not_found_message">The FamilyArchive folder was not found on the connected USB drive.</string>
+    <string name="folder_not_selected">No folder was selected</string>
+    <string name="install_permission_denied">Permission to install applications was not granted</string>
+    <string name="system_folder_picker_unavailable">The system folder picker is unavailable on this device</string>
+    <string name="downloaded_apk_unavailable">The downloaded APK is no longer available</string>
+    <string name="package_installer_unavailable">Could not open the system package installer</string>
 </resources>
