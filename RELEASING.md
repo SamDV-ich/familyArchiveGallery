@@ -2,7 +2,7 @@
 
 ## Overview
 
-Production APKs are built, signed, and published automatically by GitHub Actions whenever a tag matching `v*` is pushed to GitHub.
+Production APKs are built, signed, and published from the **Publish release APK** workflow in GitHub Actions. Start it with **Run workflow** and select `patch`, `minor`, or `major`.
 
 The updater in the Android TV application checks the latest published release from:
 
@@ -56,35 +56,30 @@ In the GitHub repository, open **Settings → Secrets and variables → Actions*
 
 The workflow writes the decoded keystore only to the temporary GitHub runner directory.
 
-## Preparing a Release
+## Publishing a Release
 
-Before creating a tag, update both values in `app/build.gradle.kts`:
+Open **Actions → Publish release APK → Run workflow**, select the version increment, and start the workflow.
 
-```kotlin
-versionCode = 2
-versionName = "1.1.0"
-```
+The first run publishes the current project version (`1.0.0`). After that, the selected increment is applied automatically:
+
+| Selection | Example |
+| --- | --- |
+| `patch` | `1.2.3` → `1.2.4` |
+| `minor` | `1.2.3` → `1.3.0` |
+| `major` | `1.2.3` → `2.0.0` |
+
+The workflow increases `versionCode`, updates `versionName`, runs verification, commits the version change, creates the tag, and publishes the signed APK. A concurrency lock prevents two releases from running at the same time. If publishing fails after the tag was pushed, running the workflow again retries that version instead of skipping it.
 
 Rules:
 
-- `versionCode` must increase for every APK update.
-- `versionName` must match the Git tag without the leading `v`.
 - Every release must use the same signing keystore.
 - Do not change `applicationId` after the first production installation.
+- Do not manually edit or move a release tag.
+- Run releases from the default `main` branch.
 
-Commit and push the version change, then create and push the tag:
+The workflow:
 
-```bash
-git add app/build.gradle.kts
-git commit -m "Prepare release 1.1.0"
-git push origin main
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-Pushing the tag starts `.github/workflows/release.yml`. The workflow:
-
-1. Checks out the tagged source.
+1. Checks out the current `main` branch and all version tags.
 2. Configures Java and Gradle.
 3. Restores the signing key from GitHub Secrets.
 4. Runs unit tests and release Android Lint.
