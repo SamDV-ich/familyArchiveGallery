@@ -21,19 +21,36 @@ class UsbHostArchiveReader(private val context: Context) {
 
     fun scanRoots(archiveName: String): List<Pair<String, UsbFile>> {
         close()
+        val readableDevices = mutableListOf<UsbMassStorageDevice>()
         val roots = buildList {
             massStorageDevices()
                 .filter { usbManager.hasPermission(it.usbDevice) }
                 .forEach { device ->
-                    device.init()
-                    openDevices = openDevices + device
-                    device.partitions.forEachIndexed { index, partition ->
-                        partition.fileSystem.rootDirectory.search(archiveName)?.takeIf { it.isDirectory }?.let { root ->
-                            add("usb-host:${device.usbDevice.deviceId}:$index" to root)
+                    // A hub or multi-slot card reader commonly exposes empty slots as
+                    // separate mass-storage devices/LUNs. One unreadable slot must not
+                    // prevent a real flash drive on the same hub from being scanned.
+                    val deviceRoots = runCatching {
+                        device.init()
+                        device.partitions.mapIndexedNotNull { index, partition ->
+                            partition.fileSystem.rootDirectory.search(archiveName)
+                                ?.takeIf { it.isDirectory }
+                                ?.let { root ->
+                                    "usb-host:${device.usbDevice.deviceId}:$index" to root
+                                }
                         }
+                    }.getOrElse {
+                        runCatching { device.close() }
+                        emptyList()
+                    }
+                    if (deviceRoots.isNotEmpty()) {
+                        readableDevices += device
+                        addAll(deviceRoots)
+                    } else {
+                        runCatching { device.close() }
                     }
                 }
         }
+        openDevices = readableDevices
         return roots
     }
 

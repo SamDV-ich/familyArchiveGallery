@@ -833,6 +833,7 @@ Physical tests are mandatory for:
 - Memory pressure.
 - Large image decoding.
 - USB removal during IO.
+- A USB hub with a flash drive plus empty card-reader slots; errors from one device must not cancel scanning of the others.
 - Release APK installation and upgrade.
 
 ### 14. Risk Register

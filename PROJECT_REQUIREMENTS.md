@@ -92,6 +92,7 @@ Rules:
 - The application treats the archive as read-only.
 - Every readable, mounted shared-storage root is searched automatically on every scan. This includes the TV's primary shared storage and all mounted removable volumes.
 - Each matching `FamilyArchive` root is scanned. Categories from different roots are listed separately, even when their folder names are the same.
+- A USB hub or multi-slot card reader can expose several mass-storage devices and empty logical units. An unreadable device, unsupported partition, or empty slot must be skipped without cancelling discovery on the other connected sources.
 
 ### 6. Media Library Exclusion
 
