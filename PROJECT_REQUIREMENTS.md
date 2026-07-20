@@ -269,6 +269,9 @@ No original photo content may be copied into internal application storage.
 - Verify the APK SHA-256 checksum before opening the Android package installer.
 - Require the Android system confirmation screen for installation.
 - Treat update-check failures as non-blocking; all archive features must remain usable offline.
+- Distinguish check, download, checksum, and installer failures in user-facing messages.
+- A retry must cancel or supersede an older update task and must always provide visible progress or a new error.
+- Error messages may include a short sanitized diagnostic (for example, an HTTP status) but must not expose private paths or credentials.
 
 ### 10. Navigation Requirements
 
@@ -452,10 +455,11 @@ Version 1.0 is complete when all of the following are true:
 20. The application works without an internet connection.
 21. The application checks for a newer GitHub Release automatically at startup without blocking browsing.
 22. An update is downloaded only after user confirmation and its checksum is verified before installation.
-23. The launcher uses a full-bleed 320 × 180 TV banner distinct from the square system icon.
-24. Focus movement between primary actions remains responsive on both target Xiaomi devices.
-25. Russian and English UI text follows the Android TV system language without mixed-language screens.
-26. Empty-archive guidance explains whether category folders are missing or formats are unsupported; root-level photos must be shown instead of treated as an error.
+23. Update failures identify the failed stage and retrying never becomes a no-op because of a stale task.
+24. The launcher uses a full-bleed 320 × 180 TV banner distinct from the square system icon.
+25. Focus movement between primary actions remains responsive on both target Xiaomi devices.
+26. Russian and English UI text follows the Android TV system language without mixed-language screens.
+27. Empty-archive guidance explains whether category folders are missing or formats are unsupported; root-level photos must be shown instead of treated as an error.
 
 ### 18. Assumptions
 

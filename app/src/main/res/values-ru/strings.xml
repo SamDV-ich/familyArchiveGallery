@@ -50,6 +50,9 @@
     <string name="latest_version_installed">Установлена последняя версия</string>
     <string name="update_check_failed">Не удалось проверить обновления</string>
     <string name="update_download_failed">Не удалось загрузить обновление</string>
+    <string name="update_check_failed_with_reason">Не удалось проверить обновления. Причина: %1$s</string>
+    <string name="update_download_failed_with_reason">Не удалось загрузить обновление. Причина: %1$s</string>
+    <string name="update_checksum_failed_with_reason">Проверка контрольной суммы APK не пройдена. Причина: %1$s</string>
     <string name="selected_archive_unreadable">Выбранный архив невозможно прочитать</string>
     <string name="unexpected_storage_error">Непредвиденная ошибка доступа к накопителю</string>
     <string name="connect_usb_message">Не найдены доступные места хранения. Подключите USB-накопитель или используйте внутреннюю память приставки.</string>

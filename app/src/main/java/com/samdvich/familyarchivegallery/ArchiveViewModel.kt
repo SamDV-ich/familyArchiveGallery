@@ -11,6 +11,8 @@ import com.samdvich.familyarchivegallery.data.storage.UsbHostArchiveReader
 import com.samdvich.familyarchivegallery.data.update.GitHubUpdateRepository
 import com.samdvich.familyarchivegallery.data.update.UpdateStatus
 import com.samdvich.familyarchivegallery.data.update.UpdateUiState
+import com.samdvich.familyarchivegallery.data.update.UpdateException
+import com.samdvich.familyarchivegallery.data.update.UpdateFailureStage
 import com.samdvich.familyarchivegallery.domain.model.PhotoCategory
 import com.samdvich.familyarchivegallery.domain.model.PhotoItem
 import com.samdvich.familyarchivegallery.domain.model.NaturalOrder
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.coroutines.coroutineContext
 
 enum class ArchiveStatus {
     CHECKING,
@@ -77,30 +80,32 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
     private val _updateState = MutableStateFlow(UpdateUiState())
     val updateState: StateFlow<UpdateUiState> = _updateState.asStateFlow()
 
-    fun checkForUpdates() {
-        if (updateJob?.isActive == true) return
+    fun checkForUpdates(force: Boolean = false) {
+        if (updateJob?.isActive == true) {
+            if (!force) return
+            updateJob?.cancel()
+        }
         _updateState.value = UpdateUiState(status = UpdateStatus.CHECKING)
         updateJob = viewModelScope.launch {
-            _updateState.value = runCatching {
-                withContext(Dispatchers.IO) { updateRepository.findUpdate(BuildConfig.VERSION_NAME) }
-            }.fold(
-                onSuccess = { update ->
-                    if (update == null) {
-                        UpdateUiState(
-                            status = UpdateStatus.UP_TO_DATE,
-                            message = text(R.string.latest_version_installed)
-                        )
-                    } else {
-                        UpdateUiState(status = UpdateStatus.AVAILABLE, info = update)
-                    }
-                },
-                onFailure = {
-                    UpdateUiState(
-                        status = UpdateStatus.ERROR,
-                        message = text(R.string.update_check_failed)
-                    )
+            try {
+                val update = withContext(Dispatchers.IO) {
+                    updateRepository.findUpdate(BuildConfig.VERSION_NAME)
                 }
-            )
+                _updateState.value = if (update == null) {
+                    UpdateUiState(
+                        status = UpdateStatus.UP_TO_DATE,
+                        message = text(R.string.latest_version_installed)
+                    )
+                } else {
+                    UpdateUiState(status = UpdateStatus.AVAILABLE, info = update)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _updateState.value = updateError(UpdateFailureStage.CHECK, error)
+            } finally {
+                if (updateJob === coroutineContext[Job]) updateJob = null
+            }
         }
     }
 
@@ -109,19 +114,21 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
         if (updateJob?.isActive == true) return
         _updateState.value = _updateState.value.copy(status = UpdateStatus.DOWNLOADING, progress = 0, message = null)
         updateJob = viewModelScope.launch {
-            runCatching {
+            try {
                 withContext(Dispatchers.IO) {
                     updateRepository.download(update) { progress ->
                         _updateState.value = _updateState.value.copy(progress = progress)
                     }
-                }
-            }.onSuccess { file ->
-                onReadyToInstall(file)
-            }.onFailure {
-                _updateState.value = _updateState.value.copy(
-                    status = UpdateStatus.ERROR,
-                    message = text(R.string.update_download_failed)
+                }.also(onReadyToInstall)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _updateState.value = updateError(
+                    (error as? UpdateException)?.stage ?: UpdateFailureStage.DOWNLOAD,
+                    error
                 )
+            } finally {
+                if (updateJob === coroutineContext[Job]) updateJob = null
             }
         }
     }
@@ -399,7 +406,24 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
         data class Failure(val message: String) : ScanOutcome
     }
 
-    private fun text(@StringRes resourceId: Int): String = getApplication<Application>().getString(resourceId)
+    private fun updateError(stage: UpdateFailureStage, error: Throwable): UpdateUiState {
+        val reason = (error as? UpdateException)?.diagnostic
+            ?: error.message
+            ?: error::class.java.simpleName
+        val safeReason = reason.replace(Regex("\\s+"), " ").trim().take(140)
+        val messageRes = when (stage) {
+            UpdateFailureStage.CHECK -> R.string.update_check_failed_with_reason
+            UpdateFailureStage.DOWNLOAD -> R.string.update_download_failed_with_reason
+            UpdateFailureStage.CHECKSUM -> R.string.update_checksum_failed_with_reason
+        }
+        return UpdateUiState(
+            status = UpdateStatus.ERROR,
+            message = text(messageRes, safeReason)
+        )
+    }
+
+    private fun text(@StringRes resourceId: Int, vararg args: Any): String =
+        getApplication<Application>().getString(resourceId, *args)
 
     private companion object {
         const val ALL_PHOTOS_CATEGORY_ID = "all-photos"

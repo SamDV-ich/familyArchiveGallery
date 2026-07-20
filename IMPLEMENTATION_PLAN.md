@@ -643,6 +643,8 @@ Provide a visible Refresh action on the category screen and recovery screens. Re
 - Download `familyarchivegallery.apk` and its `.sha256` asset.
 - Verify SHA-256 before passing the APK to the system package installer.
 - Handle offline, rate-limit, missing-release, and installer-permission states without blocking archive browsing.
+- Represent check, download, checksum, and installer failures separately, with short sanitized diagnostics.
+- Cancel/supersede stale update jobs on retry and clear completed jobs so a retry cannot be silently ignored.
 - Test an in-place update signed by the production key and verify that application data is retained.
 
 ### 10. Phase 7 — Performance and Stability

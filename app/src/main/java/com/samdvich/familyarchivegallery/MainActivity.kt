@@ -275,7 +275,7 @@ class MainActivity : ComponentActivity() {
         when (state.status) {
             UpdateStatus.AVAILABLE -> viewModel.downloadUpdate(::installDownloadedApk)
             UpdateStatus.DOWNLOADING, UpdateStatus.CHECKING, UpdateStatus.INSTALLING -> Unit
-            else -> viewModel.checkForUpdates()
+            else -> viewModel.checkForUpdates(force = true)
         }
     }
 

@@ -46,6 +46,9 @@
     <string name="latest_version_installed">The latest version is installed</string>
     <string name="update_check_failed">Could not check for updates</string>
     <string name="update_download_failed">Could not download the update</string>
+    <string name="update_check_failed_with_reason">Could not check for updates. Reason: %1$s</string>
+    <string name="update_download_failed_with_reason">Could not download the update. Reason: %1$s</string>
+    <string name="update_checksum_failed_with_reason">The downloaded APK failed checksum verification. Reason: %1$s</string>
     <string name="selected_archive_unreadable">The selected archive cannot be read</string>
     <string name="unexpected_storage_error">Unexpected storage error</string>
     <string name="connect_usb_message">No readable storage locations were found. Connect a USB drive or use the TV’s internal storage.</string>

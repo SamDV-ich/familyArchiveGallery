@@ -8,6 +8,18 @@ data class UpdateInfo(
     val sha256: String?
 )
 
+enum class UpdateFailureStage {
+    CHECK,
+    DOWNLOAD,
+    CHECKSUM
+}
+
+class UpdateException(
+    val stage: UpdateFailureStage,
+    val diagnostic: String,
+    cause: Throwable? = null
+) : Exception(diagnostic, cause)
+
 enum class UpdateStatus {
     IDLE,
     CHECKING,
