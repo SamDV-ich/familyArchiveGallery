@@ -88,7 +88,7 @@ Add:
 
 - `android.software.leanback` as a required feature.
 - `android.hardware.touchscreen` as not required.
-- `LEANBACK_LAUNCHER` activity category.
+- `LAUNCHER` and `LEANBACK_LAUNCHER` categories on the same main activity, so the app is visible on TV and can be opened by system installers.
 - Landscape orientation.
 - `READ_EXTERNAL_STORAGE` with `maxSdkVersion="32"`.
 - `requestLegacyExternalStorage="true"` for Xiaomi Android TV 11 compatibility.

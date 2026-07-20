@@ -397,6 +397,7 @@ com.samdvich.familyarchivegallery/
 
 - Debug builds may be installed through Android Studio or ADB during development.
 - Production builds must use a dedicated release keystore.
+- The main activity must declare both `LAUNCHER` and `LEANBACK_LAUNCHER` so it remains visible in Android TV and can be opened by compatible system installers.
 - The application version must use both `versionCode` and `versionName`.
 - Every GitHub Release must publish these stable asset names for the embedded updater:
 
