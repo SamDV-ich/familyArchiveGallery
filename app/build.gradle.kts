@@ -21,8 +21,8 @@ android {
         minSdk = 28
         // Keep current Android behavior. Storage access is routed at runtime per source.
         targetSdk = 36
-        versionCode = 12
-        versionName = "1.0.11"
+        versionCode = 13
+        versionName = "1.0.12"
 
         buildConfigField("String", "GITHUB_OWNER", "\"SamDV-ich\"")
         buildConfigField("String", "GITHUB_REPOSITORY", "\"familyArchiveGallery\"")
