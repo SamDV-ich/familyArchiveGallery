@@ -34,6 +34,7 @@
     <string name="access_all_files_message">Разрешите доступ ко всем файлам, чтобы приложение могло автоматически читать FamilyArchive во внутренней памяти и на USB-накопителях. Если системная настройка недоступна, выберите папку архива вручную.</string>
     <string name="access_default_message">Предоставьте доступ к папке семейного архива.</string>
     <string name="select_folder">Выбрать папку</string>
+    <string name="open_file_access_settings">Открыть настройки доступа</string>
     <string name="grant_access">Предоставить доступ</string>
     <string name="check_updates">Проверить обновления</string>
     <string name="checking_updates">Проверка…</string>

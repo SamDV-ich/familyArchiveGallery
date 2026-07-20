@@ -243,6 +243,7 @@ Implement:
 - Manifest declaration for `MANAGE_EXTERNAL_STORAGE`.
 - `Environment.isExternalStorageManager()` check.
 - Settings intent for the application-specific all-files access screen.
+- Prefer the general all-files settings screen, with an app-specific settings fallback for vendor compatibility.
 - Automatic access recheck and rescan in `onResume` after returning from Settings.
 - Mounted storage-volume enumeration, including primary shared storage.
 - Direct mount path access through `StorageVolume.getDirectory()`.

@@ -170,14 +170,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openAllFilesSettings() {
-        val appIntent = Intent(
-            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-            Uri.parse("package:$packageName")
-        )
         try {
-            startActivity(appIntent)
-        } catch (_: ActivityNotFoundException) {
             startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+        } catch (_: ActivityNotFoundException) {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+            )
         }
     }
 

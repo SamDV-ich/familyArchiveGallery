@@ -30,6 +30,7 @@
     <string name="access_all_files_message">Allow access to all files so the app can automatically read FamilyArchive on the TV and USB drives. If this system setting is unavailable, select the archive folder manually.</string>
     <string name="access_default_message">Grant access to the family archive folder.</string>
     <string name="select_folder">Select folder</string>
+    <string name="open_file_access_settings">Open access settings</string>
     <string name="grant_access">Grant access</string>
     <string name="check_updates">Check for updates</string>
     <string name="checking_updates">Checking…</string>

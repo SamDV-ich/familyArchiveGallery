@@ -543,7 +543,8 @@ private fun accessMessage(request: AccessRequest?): String = when (request) {
 
 @Composable
 private fun accessActionLabel(request: AccessRequest?): String = when (request) {
-    AccessRequest.DOCUMENT_TREE, AccessRequest.ALL_FILES -> stringResource(R.string.select_folder)
+    AccessRequest.DOCUMENT_TREE -> stringResource(R.string.select_folder)
+    AccessRequest.ALL_FILES -> stringResource(R.string.open_file_access_settings)
     AccessRequest.LEGACY_READ, null -> stringResource(R.string.grant_access)
 }
 

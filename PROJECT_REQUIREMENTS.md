@@ -144,6 +144,7 @@ This is a deliberate private-sideload compatibility exception and is not suitabl
 - Declare `MANAGE_EXTERNAL_STORAGE`.
 - Check access with `Environment.isExternalStorageManager()`.
 - Open the system all-files access settings when permission is missing.
+- Prefer the general all-files settings screen and fall back to the app-specific screen when required by vendor firmware.
 - Enumerate every mounted storage volume through `StorageManager`, including the TV's internal shared storage.
 - Use `StorageVolume.getDirectory()` where available.
 - Search for `FamilyArchive` automatically.
