@@ -20,8 +20,8 @@ android {
         applicationId = "com.samdvich.familyarchivegallery"
         minSdk = 28
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.0.7"
+        versionCode = 9
+        versionName = "1.0.8"
 
         buildConfigField("String", "GITHUB_OWNER", "\"SamDV-ich\"")
         buildConfigField("String", "GITHUB_REPOSITORY", "\"familyArchiveGallery\"")
