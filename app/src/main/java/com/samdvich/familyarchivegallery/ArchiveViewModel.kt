@@ -142,14 +142,15 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
 
     fun scanDirect(archiveName: String) {
         startScan {
-            val storageRoots = storageLocator.mountedRemovableRoots()
+            val storageRoots = storageLocator.mountedStorageRoots()
             if (storageRoots.isEmpty()) return@startScan ScanOutcome.NoStorage
-            val archiveRoot = storageRoots
+            val archiveRoots = storageRoots
                 .asSequence()
                 .map { File(it, archiveName) }
-                .firstOrNull { it.isDirectory && it.canRead() }
-                ?: return@startScan ScanOutcome.ArchiveNotFound
-            ScanOutcome.Success(scanner.scanFileRoot(archiveRoot))
+                .filter { it.isDirectory && it.canRead() }
+                .toList()
+            if (archiveRoots.isEmpty()) return@startScan ScanOutcome.ArchiveNotFound
+            ScanOutcome.Success(scanner.scanFileRoots(archiveRoots))
         }
     }
 

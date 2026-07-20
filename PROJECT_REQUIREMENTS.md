@@ -4,7 +4,7 @@
 
 ### 1. Project Summary
 
-Family Archive Gallery is an offline Android TV application for browsing a private family photo archive stored on a removable USB drive.
+Family Archive Gallery is an offline Android TV application for browsing private family photo archives stored in the TV's shared internal storage and on removable USB drives.
 
 The application automatically discovers a predefined archive directory, treats each first-level subdirectory as a photo category, displays category cards with multi-image previews, provides a photo grid for each category, and supports full-screen photo viewing with D-pad navigation.
 
@@ -14,7 +14,7 @@ The application is intended for private use and will be distributed as a signed 
 
 - Support Android TV 9 (API 28) and later.
 - Run correctly at 1920 × 1080 on Xiaomi TV Stick hardware.
-- Discover and read a family archive from removable USB storage.
+- Discover and read family archives from every available storage location, including the TV's shared internal storage and any number of removable USB drives.
 - Avoid querying, inserting, or updating Android MediaStore.
 - Prevent archive photos from appearing in the system media library.
 - Require as little user interaction as the Android storage model allows.
@@ -36,7 +36,7 @@ The first release will not include:
 - Mobile phone or touch-first layouts.
 - Face recognition, object recognition, or automatic tagging.
 - Remote administration of the archive.
-- Multiple archive roots on the same drive unless added in a later release.
+- Merging same-named categories from different archive roots; each discovered first-level directory remains a separate category.
 
 ### 4. Target Platform
 
@@ -59,7 +59,7 @@ The application must remain installable and functional on Android 9 while adapti
 
 ### 5. Archive Directory Contract
 
-The recommended USB drive structure is:
+The archive can be placed at the root of the TV's shared internal storage or at the root of any USB drive. The recommended structure is:
 
 ```text
 USB_ROOT/
@@ -87,6 +87,8 @@ Rules:
 - Empty categories are not shown.
 - Unreadable files are skipped without stopping the scan.
 - The application treats the archive as read-only.
+- Every readable, mounted shared-storage root is searched automatically on every scan. This includes the TV's primary shared storage and all mounted removable volumes.
+- Each matching `FamilyArchive` root is scanned. Categories from different roots are listed separately, even when their folder names are the same.
 
 ### 6. Media Library Exclusion
 
@@ -116,7 +118,7 @@ Android storage behavior differs by OS version. The application must select an a
 #### 7.1 Android 9
 
 - Request `READ_EXTERNAL_STORAGE` at runtime.
-- Enumerate mounted removable volumes through `StorageManager`.
+- Enumerate mounted storage volumes through `StorageManager`, including the non-removable primary shared-storage volume.
 - Resolve the USB mount directory using the volume UUID and validated mount candidates.
 - Search automatically for `FamilyArchive`.
 - Use `java.io.File` for scanning and image loading.
@@ -130,7 +132,7 @@ The application deliberately targets API 29 and declares `requestLegacyExternalS
 This is a deliberate private-sideload compatibility exception and is not suitable for Google Play publication. Raising `targetSdk` must be followed by a complete USB permission and discovery regression test on `MITV-AYFR0`.
 
 - Request `READ_EXTERNAL_STORAGE` (`Files and media`) once.
-- Enumerate the removable volume directly and find `FamilyArchive` automatically.
+- Enumerate every mounted storage root directly and find `FamilyArchive` automatically.
 - Keep the archive read-only.
 - Do not use MediaStore.
 
@@ -139,7 +141,7 @@ This is a deliberate private-sideload compatibility exception and is not suitabl
 - Declare `MANAGE_EXTERNAL_STORAGE`.
 - Check access with `Environment.isExternalStorageManager()`.
 - Open the system all-files access settings when permission is missing.
-- Enumerate mounted removable volumes through `StorageManager`.
+- Enumerate every mounted storage volume through `StorageManager`, including the TV's internal shared storage.
 - Use `StorageVolume.getDirectory()` where available.
 - Search for `FamilyArchive` automatically.
 - Use a persisted Storage Access Framework grant as a fallback when vendor firmware does not expose usable direct storage access.
@@ -169,8 +171,8 @@ On startup, the application must:
 
 1. Determine the Android storage access mode.
 2. Check or request the required permission.
-3. Detect mounted removable storage.
-4. Locate the archive root.
+3. Detect every mounted, readable storage location.
+4. Locate every matching archive root.
 5. Retain currently visible scan state when available.
 6. Start an asynchronous rescan.
 7. Display categories progressively as results become available.
@@ -230,7 +232,7 @@ A refresh must occur:
 
 - On application startup.
 - When the application returns to the foreground.
-- When removable storage is mounted.
+- When storage is mounted.
 - When removable storage is unmounted or ejected.
 - When the user explicitly selects Refresh.
 - When a previously known volume is reconnected.
@@ -274,7 +276,7 @@ The application must provide dedicated UI states for:
 
 - Permission required.
 - Permission denied.
-- No removable storage attached.
+- No readable storage location available.
 - USB drive detected but not mounted.
 - Archive root not found.
 - Archive root found but empty.
@@ -424,7 +426,7 @@ Version 1.0 is complete when all of the following are true:
 6. Android 10–12 read-only legacy USB access is requested and handled correctly.
 7. Android 13+ can use all-files access or retain and reuse a SAF directory grant.
 8. A removable USB drive is detected without querying MediaStore.
-9. `FamilyArchive` is found automatically whenever direct access is available.
+9. `FamilyArchive` is found automatically in every available storage location whenever direct access is available.
 10. Every non-empty first-level folder becomes a category.
 11. Category cards display a title, photo count, and up to four previews.
 12. A category opens into a navigable photo grid.

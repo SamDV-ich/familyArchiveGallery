@@ -15,7 +15,7 @@ import java.util.UUID
 
 class ArchiveScanner(private val context: Context) {
     fun scanFileRoot(root: File): ArchiveScanResult {
-        val sourceId = root.parentFile?.name ?: root.absolutePath
+        val sourceId = root.absolutePath
         val rootChildren = root.listFiles().orEmpty()
         val categoryDirectories = rootChildren
             .asSequence()
@@ -35,6 +35,20 @@ class ArchiveScanner(private val context: Context) {
             rootSupportedPhotoCount = rootChildren.count {
                 it.isFile && it.canRead() && isSupportedImage(it.name)
             }
+        )
+    }
+
+    fun scanFileRoots(roots: List<File>): ArchiveScanResult {
+        val results = roots.map(::scanFileRoot)
+        return ArchiveScanResult(
+            sourceId = "multiple-file-roots",
+            categories = results
+                .flatMap(ArchiveScanResult::categories)
+                .sortedWith(compareBy(NaturalOrder) { it.name }),
+            // Show a warning if any discovered archive could still enter Android's media library.
+            hasNoMediaMarker = results.all(ArchiveScanResult::hasNoMediaMarker),
+            firstLevelDirectoryCount = results.sumOf(ArchiveScanResult::firstLevelDirectoryCount),
+            rootSupportedPhotoCount = results.sumOf(ArchiveScanResult::rootSupportedPhotoCount)
         )
     }
 

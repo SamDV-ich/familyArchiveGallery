@@ -169,7 +169,7 @@ Do not expose `File` or `DocumentFile` directly to UI code.
 Define a storage interface with operations such as:
 
 - List mounted sources.
-- Find the archive root.
+- Find every archive root.
 - List child directories.
 - List child files.
 - Open a read stream.
@@ -207,10 +207,10 @@ Implement:
 
 - Runtime `READ_EXTERNAL_STORAGE` request.
 - `StorageManager.getStorageVolumes()` enumeration.
-- Filtering by mounted state and removable status.
-- USB mount candidate resolution from volume UUID.
+- Filtering by mounted state while retaining both removable and non-removable shared-storage volumes.
+- Storage-root resolution from volume UUID, plus a primary shared-storage fallback.
 - Candidate validation with `StorageManager.getStorageVolume(file)`.
-- Automatic search for `FamilyArchive`.
+- Automatic search for `FamilyArchive` in every readable storage root.
 
 Run device diagnostics during development and record:
 
@@ -228,8 +228,8 @@ Implement:
 
 - Runtime `READ_EXTERNAL_STORAGE` (`Files and media`) request.
 - Legacy external storage mode for the API 29 target.
-- Direct removable-volume traversal without MediaStore.
-- Automatic discovery of `FamilyArchive`.
+- Direct traversal of every mounted storage root without MediaStore.
+- Automatic discovery of every `FamilyArchive` root.
 
 The first-run UI must clearly state that file access is read-only and must be granted once.
 
@@ -240,7 +240,7 @@ Implement:
 - Manifest declaration for `MANAGE_EXTERNAL_STORAGE`.
 - `Environment.isExternalStorageManager()` check.
 - Settings intent for the application-specific all-files access screen.
-- Mounted removable volume enumeration.
+- Mounted storage-volume enumeration, including primary shared storage.
 - Direct mount path access through `StorageVolume.getDirectory()`.
 - SAF fallback when the settings page or direct access is unavailable on vendor firmware.
 
@@ -595,7 +595,7 @@ When a drive is attached:
 
 1. Refresh the volume list.
 2. Resolve access.
-3. Search for the archive root.
+3. Search for every archive root.
 4. Show cached content for a recognized source.
 5. Start an incremental scan.
 
@@ -900,7 +900,7 @@ The first practical coding sequence should be:
 3. Implement Android 9 permission handling.
 4. Print mounted `StorageVolume` diagnostics in debug builds.
 5. Prove that the Xiaomi TV Stick can read a test file from USB.
-6. Find `FamilyArchive` automatically.
+6. Find every `FamilyArchive` root automatically.
 7. Implement the storage abstraction.
 8. Add Android 10–12 legacy read-only storage support.
 9. Add Android 13+ all-files and SAF fallback support.

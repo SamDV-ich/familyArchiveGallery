@@ -41,8 +41,8 @@
     <string name="update_download_failed">Could not download the update</string>
     <string name="selected_archive_unreadable">The selected archive cannot be read</string>
     <string name="unexpected_storage_error">Unexpected storage error</string>
-    <string name="connect_usb_message">Connect a USB drive containing the FamilyArchive folder.</string>
-    <string name="archive_folder_not_found_message">The FamilyArchive folder was not found on the connected USB drive.</string>
+    <string name="connect_usb_message">No readable storage locations were found. Connect a USB drive or use the TV’s internal storage.</string>
+    <string name="archive_folder_not_found_message">The FamilyArchive folder was not found in any available storage location.</string>
     <string name="folder_not_selected">No folder was selected</string>
     <string name="install_permission_denied">Permission to install applications was not granted</string>
     <string name="system_folder_picker_unavailable">The system folder picker is unavailable on this device</string>
