@@ -236,6 +236,20 @@ The viewer must:
 - Stop at the first and last photo rather than wrapping by default.
 - Prefetch only the immediately previous and next photos.
 - Recover gracefully if the current file disappears or the USB drive is removed.
+- Replace the previous frame with a neutral loading state and spinner immediately when a new
+  photo is selected.
+- Support fit-to-screen zoom in 0.1× steps up to 2.0×. At fit, Left/Right navigate photos;
+  while zoomed, all directional keys pan the image. Center exposes zoom and navigation actions;
+  Back first returns to fit, then returns to the grid.
+- Re-decode the original source at the requested zoom resolution. Original files must never be
+  resized, replaced, or copied in full merely to support viewing.
+
+#### 9.4.1 Slideshow
+
+- Provide a looping slideshow for All photos and for every category.
+- Persist a configurable delay of 3, 5, 10, 15, 30, or 60 seconds; default to 10 seconds.
+- Start the next delay only after the current image is ready. Center pauses/resumes; Left/Right
+  move manually; Back stops the slideshow and returns to its grid; damaged files are skipped.
 
 #### 9.5 Refresh and Change Detection
 
@@ -317,6 +331,13 @@ All user-facing application text must come from Android string resources. Englis
 - Only the current, previous, and next full-screen images may be retained or prefetched.
 - Thumbnail cache size must be configurable and bounded.
 - The decoded bitmap memory cache must be bounded between 8 MiB and 32 MiB according to available runtime memory.
+- Route image work through a shared coordinator: one USB Host decode and at most two non-USB
+  decodes. Current viewer content outranks visible grid thumbnails, which outrank previews.
+- Every visible pending image shows a spinner. Only visible grid cells and their next row may
+  request thumbnails.
+- Cache only derived thumbnails. Keep full-screen and zoom frames in memory. The internal cache
+  is limited to 64 MiB; the opted-in archive cache is limited to 256 MiB and resides only in
+  `FamilyArchive/.familyarchivegallery-cache/` with `.nomedia` and LRU cleanup.
 - Corrupt files must not terminate a scan or browsing session.
 - Large directories must be processed incrementally.
 - UI lists and grids must use stable item keys.
@@ -330,6 +351,12 @@ Initial performance targets:
 - The application should support archives of at least 20,000 photos without loading all full-resolution files into memory.
 
 Performance targets must be validated on the physical Xiaomi TV Stick rather than only on an emulator.
+
+### 12.1 Hidden and metadata files
+
+Ignore every dot-prefixed file and directory at every traversal level. This includes macOS
+AppleDouble sidecars such as `._IMG_0001.JPG`, `.DS_Store`, `.nomedia`, and the application
+cache directory. Such entries are never shown or deleted.
 
 ### 13. Data and Cache Requirements
 
@@ -350,7 +377,9 @@ The application must not store:
 - Personal data outside the device.
 - Analytics or usage telemetry.
 
-Uninstalling the application may remove its preferences and bitmap cache but must never remove or modify files on the USB drive.
+Uninstalling the application may remove its preferences and bitmap cache but must never remove
+or modify original files on the USB drive. If the user explicitly enables archive-side caching,
+the app may create and evict only derived thumbnails in its hidden cache directory.
 
 ### 14. Technical Architecture
 

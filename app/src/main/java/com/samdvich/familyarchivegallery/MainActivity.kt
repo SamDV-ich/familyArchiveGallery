@@ -116,17 +116,23 @@ class MainActivity : ComponentActivity() {
                 val state = viewModel.uiState.collectAsState().value
                 val screen = viewModel.screen.collectAsState().value
                 val updateState = viewModel.updateState.collectAsState().value
+                val settings = viewModel.settings.collectAsState().value
                 FamilyArchiveApp(
                     uiState = state,
                     screen = screen,
                     updateState = updateState,
+                    settings = settings,
                     onGrantAccess = ::grantAccess,
                     onRefresh = ::ensureStorageAccess,
                     onRecoverUsbConnection = { viewModel.recoverUsbHost(ARCHIVE_DIRECTORY_NAME) },
                     onPrepareUsbRemoval = viewModel::prepareUsbForRemoval,
                     onOpenCategory = viewModel::openCategory,
                     onOpenPhoto = viewModel::openPhoto,
+                    onStartSlideshow = { categoryId, index -> viewModel.openPhoto(categoryId, index, slideshow = true) },
                     onMoveViewer = viewModel::moveViewer,
+                    onOpenSettings = viewModel::openSettings,
+                    onSetSlideshowDelay = viewModel::setSlideshowDelay,
+                    onSetArchiveDiskCache = viewModel::setArchiveDiskCacheEnabled,
                     onUpdateAction = { handleUpdateAction(updateState) },
                     onBack = { if (!viewModel.back()) finish() }
                 )

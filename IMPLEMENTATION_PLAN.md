@@ -516,8 +516,19 @@ Use `ImageDecoder` for both `File` and `content://` sources. Do not request orig
 - Grid scrolling remains responsive on the Xiaomi TV Stick.
 - Full-resolution files are not decoded for grid cells.
 - Thumbnail failures do not affect other items.
+- Visible tiles use one bounded loader and display loading/error placeholders.
 
 ### 8. Phase 5 — Full-Screen Viewer
+
+#### 8.0 Zoom and slideshow extension
+
+- Add fit-to-screen zoom in 0.1× increments to 2.0×. At fit, horizontal keys change photos;
+  while zoomed, directional keys pan. Center exposes fit, zoom, previous, and next actions;
+  Back resets zoom before leaving.
+- Re-decode only the current source at the requested quality; never retain full originals just
+  for zooming.
+- Add looping slideshows for each category and All photos, with persisted 3/5/10/15/30/60-second
+  delay, pause/resume, manual navigation, safe damaged-file skipping, and USB-removal stop.
 
 #### 8.1 Implement Viewer State
 
@@ -873,6 +884,14 @@ Mitigation:
 - Bound caches.
 - Prefetch only adjacent viewer images.
 - Profile on physical hardware.
+
+#### Image loading and cache extension
+
+- Route previews, visible grid cells, current viewer frames, and zoom frames through a bounded
+  coordinator. Use one USB Host decode and two non-USB decodes; cancel obsolete work.
+- Add bounded RAM and derived-thumbnail disk cache. Archive-side cache is user-opt-in and only
+  uses `FamilyArchive/.familyarchivegallery-cache/`; otherwise use app cache.
+- Exclude all dot-prefixed paths, including AppleDouble `._*`, from File, SAF, and USB scans.
 
 #### Risk: Remote Focus Feels Slow on Low-Power Hardware
 

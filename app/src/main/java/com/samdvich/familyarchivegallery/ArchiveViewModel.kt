@@ -28,6 +28,11 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.coroutines.coroutineContext
 
+data class GallerySettings(
+    val slideshowDelaySeconds: Int = 10,
+    val useArchiveDiskCache: Boolean = false
+)
+
 enum class ArchiveStatus {
     CHECKING,
     ACCESS_REQUIRED,
@@ -56,8 +61,9 @@ data class ArchiveUiState(
 
 sealed interface ArchiveScreen {
     data object Categories : ArchiveScreen
+    data object Settings : ArchiveScreen
     data class Photos(val categoryId: String) : ArchiveScreen
-    data class Viewer(val categoryId: String, val photoIndex: Int) : ArchiveScreen
+    data class Viewer(val categoryId: String, val photoIndex: Int, val slideshow: Boolean = false) : ArchiveScreen
 }
 
 class ArchiveViewModel(application: Application) : AndroidViewModel(application) {
@@ -81,6 +87,15 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
 
     private val _updateState = MutableStateFlow(UpdateUiState())
     val updateState: StateFlow<UpdateUiState> = _updateState.asStateFlow()
+
+    private val preferences = application.getSharedPreferences("gallery_settings", Application.MODE_PRIVATE)
+    private val _settings = MutableStateFlow(
+        GallerySettings(
+            slideshowDelaySeconds = preferences.getInt(KEY_SLIDESHOW_DELAY, 10).coerceIn(3, 60),
+            useArchiveDiskCache = preferences.getBoolean(KEY_ARCHIVE_DISK_CACHE, false)
+        )
+    )
+    val settings: StateFlow<GallerySettings> = _settings.asStateFlow()
 
     fun checkForUpdates(force: Boolean = false) {
         if (updateJob?.isActive == true) {
@@ -291,17 +306,37 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun openPhoto(categoryId: String, index: Int) {
+    fun openSettings() {
+        _screen.value = ArchiveScreen.Settings
+    }
+
+    fun setSlideshowDelay(seconds: Int) {
+        val accepted = seconds.takeIf { it in SLIDESHOW_DELAYS } ?: return
+        _settings.value = _settings.value.copy(slideshowDelaySeconds = accepted)
+        preferences.edit().putInt(KEY_SLIDESHOW_DELAY, accepted).apply()
+    }
+
+    fun setArchiveDiskCacheEnabled(enabled: Boolean) {
+        _settings.value = _settings.value.copy(useArchiveDiskCache = enabled)
+        preferences.edit().putBoolean(KEY_ARCHIVE_DISK_CACHE, enabled).apply()
+    }
+
+    fun openPhoto(categoryId: String, index: Int, slideshow: Boolean = false) {
         val category = category(categoryId) ?: return
         if (index in category.photos.indices) {
-            _screen.value = ArchiveScreen.Viewer(categoryId, index)
+            _screen.value = ArchiveScreen.Viewer(categoryId, index, slideshow)
         }
     }
 
-    fun moveViewer(delta: Int) {
+    fun moveViewer(delta: Int, wrap: Boolean = false) {
         val current = _screen.value as? ArchiveScreen.Viewer ?: return
         val category = category(current.categoryId) ?: return
-        val target = (current.photoIndex + delta).coerceIn(category.photos.indices)
+        if (category.photos.isEmpty()) return
+        val target = if (wrap) {
+            ((current.photoIndex + delta) % category.photos.size + category.photos.size) % category.photos.size
+        } else {
+            (current.photoIndex + delta).coerceIn(category.photos.indices)
+        }
         _screen.value = current.copy(photoIndex = target)
     }
 
@@ -315,6 +350,10 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
             _screen.value = ArchiveScreen.Categories
             true
         }
+        ArchiveScreen.Settings -> {
+            _screen.value = ArchiveScreen.Categories
+            true
+        }
         ArchiveScreen.Categories -> false
     }
 
@@ -323,6 +362,7 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
     private fun categoryForScreen(): PhotoCategory? = when (val current = _screen.value) {
         is ArchiveScreen.Photos -> category(current.categoryId)
         is ArchiveScreen.Viewer -> category(current.categoryId)
+        ArchiveScreen.Settings -> null
         ArchiveScreen.Categories -> null
     }
 
@@ -390,6 +430,7 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
                 when (currentScreen) {
                     is ArchiveScreen.Photos -> currentScreen.categoryId
                     is ArchiveScreen.Viewer -> currentScreen.categoryId
+                    ArchiveScreen.Settings -> ""
                     ArchiveScreen.Categories -> ""
                 }
             ) == null
@@ -477,5 +518,8 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
         const val MAX_USB_SCAN_ATTEMPTS = 2
         const val USB_RETRY_DELAY_MS = 1_500L
         const val USB_RECOVERY_DELAY_MS = 1_500L
+        const val KEY_SLIDESHOW_DELAY = "slideshow_delay"
+        const val KEY_ARCHIVE_DISK_CACHE = "archive_disk_cache"
+        val SLIDESHOW_DELAYS = setOf(3, 5, 10, 15, 30, 60)
     }
 }

@@ -55,6 +55,7 @@ import com.samdvich.familyarchivegallery.ArchiveScreen
 import com.samdvich.familyarchivegallery.ArchiveStatus
 import com.samdvich.familyarchivegallery.ArchiveUiState
 import com.samdvich.familyarchivegallery.BuildConfig
+import com.samdvich.familyarchivegallery.GallerySettings
 import com.samdvich.familyarchivegallery.R
 import com.samdvich.familyarchivegallery.domain.model.PhotoCategory
 import com.samdvich.familyarchivegallery.domain.model.PhotoItem
@@ -62,19 +63,26 @@ import com.samdvich.familyarchivegallery.domain.model.PhotoSourceType
 import com.samdvich.familyarchivegallery.data.update.UpdateStatus
 import com.samdvich.familyarchivegallery.data.update.UpdateUiState
 import com.samdvich.familyarchivegallery.ui.components.ArchiveImage
+import com.samdvich.familyarchivegallery.ui.components.ImagePurpose
+import kotlinx.coroutines.delay
 
 @Composable
 fun FamilyArchiveApp(
     uiState: ArchiveUiState,
     screen: ArchiveScreen,
     updateState: UpdateUiState,
+    settings: GallerySettings,
     onGrantAccess: (AccessRequest) -> Unit,
     onRefresh: () -> Unit,
     onRecoverUsbConnection: () -> Unit,
     onPrepareUsbRemoval: () -> Unit,
     onOpenCategory: (String) -> Unit,
     onOpenPhoto: (String, Int) -> Unit,
-    onMoveViewer: (Int) -> Unit,
+    onStartSlideshow: (String, Int) -> Unit,
+    onMoveViewer: (Int, Boolean) -> Unit,
+    onOpenSettings: () -> Unit,
+    onSetSlideshowDelay: (Int) -> Unit,
+    onSetArchiveDiskCache: (Boolean) -> Unit,
     onUpdateAction: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -124,18 +132,28 @@ fun FamilyArchiveApp(
                     when (screen) {
                         ArchiveScreen.Categories -> CategoriesScreen(
                             state = uiState,
+                            useArchiveDiskCache = settings.useArchiveDiskCache,
+                            onRefresh = onRefresh,
+                            onOpenSettings = onOpenSettings,
+                            onOpenCategory = onOpenCategory
+                        )
+                        ArchiveScreen.Settings -> SettingsScreen(
+                            settings = settings,
                             updateState = updateState,
                             onRefresh = onRefresh,
                             onPrepareUsbRemoval = onPrepareUsbRemoval,
                             onUpdateAction = onUpdateAction,
-                            onOpenCategory = onOpenCategory
+                            onSetSlideshowDelay = onSetSlideshowDelay,
+                            onSetArchiveDiskCache = onSetArchiveDiskCache
                         )
                         is ArchiveScreen.Photos -> uiState.categories
                             .firstOrNull { it.id == screen.categoryId }
                             ?.let { category ->
                                 PhotosScreen(
                                     category = category,
-                                    onOpenPhoto = { onOpenPhoto(category.id, it) }
+                                    useArchiveDiskCache = settings.useArchiveDiskCache,
+                                    onOpenPhoto = { onOpenPhoto(category.id, it) },
+                                    onStartSlideshow = { onStartSlideshow(category.id, it) }
                                 )
                             }
                         is ArchiveScreen.Viewer -> uiState.categories
@@ -144,6 +162,9 @@ fun FamilyArchiveApp(
                                 PhotoViewerScreen(
                                     category = category,
                                     index = screen.photoIndex,
+                                    slideshow = screen.slideshow,
+                                    slideshowDelaySeconds = settings.slideshowDelaySeconds,
+                                    useArchiveDiskCache = settings.useArchiveDiskCache,
                                     onMove = onMoveViewer,
                                     onBack = onBack
                                 )
@@ -213,10 +234,9 @@ private fun StatusScreen(
 @Composable
 private fun CategoriesScreen(
     state: ArchiveUiState,
-    updateState: UpdateUiState,
+    useArchiveDiskCache: Boolean,
     onRefresh: () -> Unit,
-    onPrepareUsbRemoval: () -> Unit,
-    onUpdateAction: () -> Unit,
+    onOpenSettings: () -> Unit,
     onOpenCategory: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -246,25 +266,7 @@ private fun CategoriesScreen(
                     fontSize = 17.sp
                 )
             }
-            ActionButton(
-                label = updateButtonLabel(updateState),
-                onClick = onUpdateAction,
-                enabled = updateState.status != UpdateStatus.CHECKING &&
-                    updateState.status != UpdateStatus.DOWNLOADING
-            )
-        }
-
-        updateState.message?.let { message ->
-            Text(
-                text = message,
-                color = if (updateState.status == UpdateStatus.ERROR) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier.padding(horizontal = 58.dp, vertical = 4.dp),
-                fontSize = 16.sp
-            )
+            ActionButton(label = stringResource(R.string.settings), onClick = onOpenSettings)
         }
 
         state.message?.let { message ->
@@ -301,38 +303,29 @@ private fun CategoriesScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 items(state.categories, key = { it.id }) { category ->
-                    CategoryCard(category = category, onClick = { onOpenCategory(category.id) })
-                }
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 58.dp, end = 58.dp, top = 8.dp, bottom = 28.dp)
-            ) {
-                ActionButton(
-                    label = stringResource(R.string.refresh_photo_list),
-                    onClick = onRefresh
-                )
-                if (state.categories.any { category ->
-                        category.photos.any { it.sourceType == PhotoSourceType.USB_FILE }
-                    }) {
-                    Spacer(Modifier.width(14.dp))
-                    ActionButton(
-                        label = stringResource(R.string.prepare_usb_removal),
-                        onClick = onPrepareUsbRemoval
+                    CategoryCard(
+                        category = category,
+                        useArchiveDiskCache = useArchiveDiskCache,
+                        onClick = { onOpenCategory(category.id) }
                     )
                 }
             }
+            // Storage actions live in Settings so the archive grid remains focused on browsing.
         }
     }
 }
 
 @Composable
-private fun CategoryCard(category: PhotoCategory, onClick: () -> Unit) {
+private fun CategoryCard(
+    category: PhotoCategory,
+    useArchiveDiskCache: Boolean,
+    onClick: () -> Unit
+) {
     FocusableTile(onClick = onClick) {
         Column {
             PreviewCollage(
                 photos = category.previewPhotos,
+                useArchiveDiskCache = useArchiveDiskCache,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
@@ -361,7 +354,67 @@ private fun CategoryCard(category: PhotoCategory, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PreviewCollage(photos: List<PhotoItem>, modifier: Modifier = Modifier) {
+private fun SettingsScreen(
+    settings: GallerySettings,
+    updateState: UpdateUiState,
+    onRefresh: () -> Unit,
+    onPrepareUsbRemoval: () -> Unit,
+    onUpdateAction: () -> Unit,
+    onSetSlideshowDelay: (Int) -> Unit,
+    onSetArchiveDiskCache: (Boolean) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 58.dp, vertical = 38.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        Text(text = stringResource(R.string.settings), color = MaterialTheme.colorScheme.onBackground, fontSize = 34.sp)
+        Text(text = stringResource(R.string.slideshow_delay), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 19.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            listOf(3, 5, 10, 15, 30, 60).forEach { seconds ->
+                ActionButton(
+                    label = stringResource(R.string.seconds_short, seconds),
+                    onClick = { onSetSlideshowDelay(seconds) },
+                    enabled = seconds != settings.slideshowDelaySeconds
+                )
+            }
+        }
+        Text(text = stringResource(R.string.cache_setting), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 19.sp)
+        ActionButton(
+            label = stringResource(
+                if (settings.useArchiveDiskCache) R.string.cache_in_archive_on else R.string.cache_in_archive_off
+            ),
+            onClick = { onSetArchiveDiskCache(!settings.useArchiveDiskCache) }
+        )
+        Text(
+            text = stringResource(R.string.cache_setting_description),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 15.sp
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            ActionButton(label = stringResource(R.string.refresh_photo_list), onClick = onRefresh)
+            ActionButton(label = stringResource(R.string.prepare_usb_removal), onClick = onPrepareUsbRemoval)
+            ActionButton(
+                label = updateButtonLabel(updateState),
+                onClick = onUpdateAction,
+                enabled = updateState.status != UpdateStatus.CHECKING && updateState.status != UpdateStatus.DOWNLOADING
+            )
+        }
+        updateState.message?.let { message ->
+            Text(
+                text = message,
+                color = if (updateState.status == UpdateStatus.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 16.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun PreviewCollage(
+    photos: List<PhotoItem>,
+    useArchiveDiskCache: Boolean,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
         repeat(2) { row ->
             Row(modifier = Modifier.weight(1f)) {
@@ -379,6 +432,8 @@ private fun PreviewCollage(photos: List<PhotoItem>, modifier: Modifier = Modifie
                             photo = photo,
                             maxDimension = 480,
                             contentScale = ContentScale.Crop,
+                            purpose = ImagePurpose.CATEGORY_PREVIEW,
+                            useArchiveDiskCache = useArchiveDiskCache,
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -391,23 +446,26 @@ private fun PreviewCollage(photos: List<PhotoItem>, modifier: Modifier = Modifie
 }
 
 @Composable
-private fun PhotosScreen(category: PhotoCategory, onOpenPhoto: (Int) -> Unit) {
+private fun PhotosScreen(
+    category: PhotoCategory,
+    useArchiveDiskCache: Boolean,
+    onOpenPhoto: (Int) -> Unit,
+    onStartSlideshow: (Int) -> Unit
+) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.padding(start = 58.dp, top = 38.dp, bottom = 16.dp)) {
-            Text(
-                text = category.name,
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 32.sp
-            )
-            Text(
-                pluralStringResource(
-                    R.plurals.photo_count,
-                    category.photos.size,
-                    category.photos.size
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 17.sp
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 58.dp, end = 58.dp, top = 38.dp, bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = category.name, color = MaterialTheme.colorScheme.onBackground, fontSize = 32.sp)
+                Text(
+                    pluralStringResource(R.plurals.photo_count, category.photos.size, category.photos.size),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 17.sp
+                )
+            }
+            ActionButton(label = stringResource(R.string.start_slideshow), onClick = { onStartSlideshow(0) })
         }
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
@@ -421,6 +479,8 @@ private fun PhotosScreen(category: PhotoCategory, onOpenPhoto: (Int) -> Unit) {
                         photo = photo,
                         maxDimension = 640,
                         contentScale = ContentScale.Crop,
+                        purpose = ImagePurpose.GRID_VISIBLE,
+                        useArchiveDiskCache = useArchiveDiskCache,
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(4f / 3f)
@@ -436,32 +496,80 @@ private fun PhotosScreen(category: PhotoCategory, onOpenPhoto: (Int) -> Unit) {
 private fun PhotoViewerScreen(
     category: PhotoCategory,
     index: Int,
-    onMove: (Int) -> Unit,
+    slideshow: Boolean,
+    slideshowDelaySeconds: Int,
+    useArchiveDiskCache: Boolean,
+    onMove: (Int, Boolean) -> Unit,
     onBack: () -> Unit
 ) {
     val photo = category.photos[index]
     val focusRequester = remember { FocusRequester() }
     var controlsVisible by remember { mutableStateOf(true) }
-    BackHandler { onBack() }
+    var zoom by remember(photo.id) { mutableStateOf(1f) }
+    var panX by remember(photo.id) { mutableStateOf(0f) }
+    var panY by remember(photo.id) { mutableStateOf(0f) }
+    var currentImageReady by remember(photo.id) { mutableStateOf(false) }
+    var currentImageFailed by remember(photo.id) { mutableStateOf(false) }
+    var slideshowPaused by remember { mutableStateOf(false) }
+    val isZoomed = zoom > 1f
+
+    BackHandler {
+        when {
+            controlsVisible -> controlsVisible = false
+            isZoomed -> {
+                zoom = 1f
+                panX = 0f
+                panY = 0f
+            }
+            else -> onBack()
+        }
+    }
+
+    LaunchedEffect(photo.id, slideshow, slideshowPaused, slideshowDelaySeconds) {
+        if (slideshow && !slideshowPaused) {
+            when {
+                currentImageReady -> {
+                    delay(slideshowDelaySeconds * 1_000L)
+                    onMove(1, true)
+                }
+                currentImageFailed -> {
+                    delay(1_500L)
+                    onMove(1, true)
+                }
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
             .focusRequester(focusRequester)
-            .onPreviewKeyEvent { event ->
+                .onPreviewKeyEvent { event ->
                 if (event.nativeKeyEvent.action != KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
                 when (event.nativeKeyEvent.keyCode) {
                     KeyEvent.KEYCODE_DPAD_LEFT -> {
-                        onMove(-1)
+                        if (isZoomed && !controlsVisible) panX = (panX + 0.12f).coerceIn(-0.5f, 0.5f)
+                        else onMove(-1, slideshow)
                         true
                     }
                     KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                        onMove(1)
+                        if (isZoomed && !controlsVisible) panX = (panX - 0.12f).coerceIn(-0.5f, 0.5f)
+                        else onMove(1, slideshow)
+                        true
+                    }
+                    KeyEvent.KEYCODE_DPAD_UP -> {
+                        if (isZoomed && !controlsVisible) panY = (panY + 0.12f).coerceIn(-0.5f, 0.5f)
+                        else zoom = (zoom + 0.1f).coerceAtMost(2f)
+                        true
+                    }
+                    KeyEvent.KEYCODE_DPAD_DOWN -> {
+                        if (isZoomed && !controlsVisible) panY = (panY - 0.12f).coerceIn(-0.5f, 0.5f)
+                        else zoom = (zoom - 0.1f).coerceAtLeast(1f)
                         true
                     }
                     KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                        controlsVisible = !controlsVisible
+                        if (slideshow) slideshowPaused = !slideshowPaused else controlsVisible = !controlsVisible
                         true
                     }
                     else -> false
@@ -471,33 +579,75 @@ private fun PhotoViewerScreen(
     ) {
         ArchiveImage(
             photo = photo,
-            maxDimension = 1920,
+            // A 1080p Stick receives up to 3840 px while zoomed: the original file is
+            // re-decoded for the requested view; no source file is resized or replaced.
+            maxDimension = (1920 * zoom).toInt(),
             contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize()
+            purpose = if (isZoomed) ImagePurpose.ZOOM_REGION else ImagePurpose.VIEWER_CURRENT,
+            useArchiveDiskCache = useArchiveDiskCache,
+            onLoadState = {
+                currentImageReady = it is com.samdvich.familyarchivegallery.ui.components.ImageLoadState.Ready
+                currentImageFailed = it is com.samdvich.familyarchivegallery.ui.components.ImageLoadState.Error
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = zoom
+                    scaleY = zoom
+                    translationX = panX * size.width
+                    translationY = panY * size.height
+                }
         )
         if (controlsVisible) {
-            Row(
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .background(Color(0xB3000000))
                     .padding(horizontal = 42.dp, vertical = 18.dp),
-                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = photo.name,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                    fontSize = 19.sp
-                )
-                Spacer(Modifier.width(24.dp))
-                Text(
-                    text = "${index + 1} / ${category.photos.size}",
-                    color = Color.White,
-                    fontSize = 18.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = photo.name,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                        fontSize = 19.sp
+                    )
+                    Spacer(Modifier.width(24.dp))
+                    Text(text = "${index + 1} / ${category.photos.size}", color = Color.White, fontSize = 18.sp)
+                }
+                if (!slideshow) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ActionButton(label = "−", onClick = { zoom = (zoom - 0.1f).coerceAtLeast(1f) })
+                        ActionButton(label = stringResource(R.string.fit_image), onClick = {
+                            zoom = 1f; panX = 0f; panY = 0f
+                        })
+                        ActionButton(label = "+", onClick = { zoom = (zoom + 0.1f).coerceAtMost(2f) })
+                        Text(
+                            text = stringResource(R.string.zoom_level, zoom),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                            fontSize = 16.sp
+                        )
+                        ActionButton(label = stringResource(R.string.previous_photo), onClick = { onMove(-1, false) })
+                        ActionButton(label = stringResource(R.string.next_photo), onClick = { onMove(1, false) })
+                    }
+                    Text(
+                        text = stringResource(R.string.viewer_zoom_help),
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                } else {
+                    Text(
+                        text = stringResource(if (slideshowPaused) R.string.slideshow_paused else R.string.slideshow_playing),
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
+                }
             }
         }
     }

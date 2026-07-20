@@ -34,7 +34,7 @@ class ArchiveScanner(private val context: Context) {
             .toList()
         val rootPhotos = rootChildren
             .asSequence()
-            .filter { it.isFile && it.canRead() && isSupportedImage(it.name) }
+            .filter { it.isFile && it.canRead() && isVisibleSupportedImage(it.name) }
             .map { file -> scanFilePhoto(sourceId, root, file, ROOT_PHOTOS_CATEGORY_ID) }
             .sortedWith(compareBy(NaturalOrder) { it.relativePath })
             .toList()
@@ -108,7 +108,7 @@ class ArchiveScanner(private val context: Context) {
             .toList()
         val rootPhotos = rootChildren
             .asSequence()
-            .filter { it.isFile && isSupportedImage(it.name.orEmpty()) }
+            .filter { it.isFile && isVisibleSupportedImage(it.name.orEmpty()) }
             .map { file -> scanDocumentPhoto(sourceId, file, ROOT_PHOTOS_CATEGORY_ID) }
             .sortedWith(compareBy(NaturalOrder) { it.relativePath })
             .toList()
@@ -134,7 +134,7 @@ class ArchiveScanner(private val context: Context) {
             runCatching { scanUsbCategory(sourceId, root, category) }.getOrNull()
         }
         val rootPhotos = rootChildren.asSequence()
-            .filter { !it.isDirectory && isSupportedImage(it.name) }
+            .filter { !it.isDirectory && isVisibleSupportedImage(it.name) }
             .map { file -> scanUsbPhoto(sourceId, root, file, ROOT_PHOTOS_CATEGORY_ID) }
             .sortedWith(compareBy(NaturalOrder) { it.relativePath })
             .toList()
@@ -160,7 +160,7 @@ class ArchiveScanner(private val context: Context) {
                 directory.listFiles().orEmpty().forEach { child ->
                     when {
                         child.isDirectory && !child.isHidden && !child.name.startsWith('.') -> pending.add(child)
-                        child.isFile && child.canRead() && isSupportedImage(child.name) ->
+                        child.isFile && child.canRead() && isVisibleSupportedImage(child.name) ->
                             add(scanFilePhoto(sourceId, root, child, categoryId))
                     }
                 }
@@ -184,7 +184,7 @@ class ArchiveScanner(private val context: Context) {
                     val name = child.name.orEmpty()
                     when {
                         child.isDirectory && !name.startsWith('.') -> pending.add(child to "$path/$name")
-                        child.isFile && isSupportedImage(name) ->
+                        child.isFile && isVisibleSupportedImage(name) ->
                             add(scanDocumentPhoto(sourceId, child, categoryId, "$path/$name"))
                     }
                 }
@@ -206,7 +206,7 @@ class ArchiveScanner(private val context: Context) {
                 pending.removeFirst().listFiles().forEach { child ->
                     when {
                         child.isDirectory && !child.name.startsWith('.') -> pending.add(child)
-                        !child.isDirectory && isSupportedImage(child.name) ->
+                        !child.isDirectory && isVisibleSupportedImage(child.name) ->
                             add(scanUsbPhoto(sourceId, root, child, categoryId))
                     }
                 }
@@ -283,6 +283,15 @@ class ArchiveScanner(private val context: Context) {
         fun isSupportedImage(name: String): Boolean = name
             .substringAfterLast('.', missingDelimiterValue = "")
             .lowercase() in supportedExtensions
+
+        /**
+         * macOS writes AppleDouble sidecar files such as `._IMG_0001.JPG` to FAT and
+         * exFAT volumes. They are metadata, not photographs. Treat every dot-prefixed
+         * name as hidden so `.DS_Store`, `.nomedia`, cache files, and their descendants
+         * cannot become gallery items either.
+         */
+        fun isVisibleSupportedImage(name: String): Boolean =
+            !name.startsWith('.') && isSupportedImage(name)
 
         private fun checkForCancellation() {
             if (Thread.currentThread().isInterrupted) throw CancellationException()
