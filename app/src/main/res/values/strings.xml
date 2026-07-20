@@ -9,6 +9,8 @@
     <string name="retry_search">Search again</string>
     <string name="retry">Retry</string>
     <string name="family_archive_title">Family archive</string>
+    <string name="all_photos_category">All photos</string>
+    <string name="uncategorized_category">Uncategorized</string>
     <string name="scanning_archive">Scanning…</string>
     <plurals name="category_count">
         <item quantity="one">%1$d category</item>
@@ -23,7 +25,6 @@
     <string name="archive_empty_title">Archive is empty</string>
     <string name="archive_empty_message">No supported photos were found. Supported formats: JPG, JPEG, PNG, WebP, BMP, HEIC, and HEIF.</string>
     <string name="archive_no_category_folders">FamilyArchive was found, but it has no category folders. Create folders inside FamilyArchive and place photos in them.</string>
-    <string name="archive_root_photos_message">Photos were found directly in FamilyArchive. Move them into first-level category folders, for example FamilyArchive/Family/photo.jpg.</string>
     <string name="access_legacy_message">Allow the application to read files on the connected USB drive.</string>
     <string name="access_document_tree_message">Select the FamilyArchive folder once. Android will retain access after a restart.</string>
     <string name="access_all_files_message">Select the FamilyArchive folder or the USB drive root. Android will retain access after a restart.</string>

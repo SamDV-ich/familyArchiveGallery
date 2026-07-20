@@ -80,9 +80,12 @@ Rules:
 - `FamilyArchive` is the default archive root name.
 - The archive root name must be defined in application configuration so it can be changed without rewriting the scanner.
 - Each visible first-level directory inside `FamilyArchive` is a category.
-- Photos may be stored directly in a category or in nested subdirectories beneath it.
+- Photos may be stored directly in `FamilyArchive`, directly in a category, or in nested subdirectories beneath a first-level category.
 - Category scanning is recursive.
-- Files stored directly in `FamilyArchive` are ignored, except for supported configuration files and `.nomedia`.
+- Supported photos stored directly in `FamilyArchive` appear in the virtual **Uncategorized** category.
+- The virtual **All photos** category contains every supported photo in the archive, including root photos and files at any nesting depth.
+- Nested directories never become separate categories; their photos remain in their first-level parent category.
+- Other files stored directly in `FamilyArchive` are ignored, except for supported configuration files and `.nomedia`.
 - Hidden directories and directories whose names begin with `.` are ignored.
 - Empty categories are not shown.
 - Unreadable files are skipped without stopping the scan.
@@ -189,6 +192,12 @@ Each category card must show:
 - A collage containing up to four photo previews.
 - A clear focused state suitable for TV viewing.
 
+The first cards are virtual categories:
+
+- **All photos** is always shown when at least one supported photo exists and opens a unified list for the whole archive.
+- **Uncategorized** is shown only when supported photos are stored directly in `FamilyArchive`.
+- The remaining cards represent only non-empty first-level directories.
+
 Additional behavior:
 
 - Categories are sorted using natural, case-insensitive filename ordering.
@@ -208,6 +217,8 @@ The photo grid must:
 - Preserve focus and scroll position after returning from the viewer.
 - Open the focused photo when the user presses the D-pad center button.
 - Return to the category screen when the user presses Back.
+
+When the viewer is opened from **All photos**, Left and Right navigate through every photo in the archive. When it is opened from another category, navigation remains within that category.
 
 Sorting by capture date may be added later, but filename ordering is the required default for the first release.
 
@@ -280,7 +291,7 @@ The application must provide dedicated UI states for:
 - USB drive detected but not mounted.
 - Archive root not found.
 - Archive root found but empty.
-- Archive root contains photos directly instead of first-level category folders.
+- Archive root contains photos directly and no category folders.
 - Archive root contains no first-level category folders.
 - Archive is currently being scanned.
 - `.nomedia` is missing.
@@ -427,7 +438,8 @@ Version 1.0 is complete when all of the following are true:
 7. Android 13+ can use all-files access or retain and reuse a SAF directory grant.
 8. A removable USB drive is detected without querying MediaStore.
 9. `FamilyArchive` is found automatically in every available storage location whenever direct access is available.
-10. Every non-empty first-level folder becomes a category.
+10. Every non-empty first-level folder becomes a category, while nested folders do not.
+11. Root-level photos appear in **Uncategorized** and all photos appear in **All photos**.
 11. Category cards display a title, photo count, and up to four previews.
 12. A category opens into a navigable photo grid.
 13. Any supported photo can be opened full-screen.
@@ -443,7 +455,7 @@ Version 1.0 is complete when all of the following are true:
 23. The launcher uses a full-bleed 320 × 180 TV banner distinct from the square system icon.
 24. Focus movement between primary actions remains responsive on both target Xiaomi devices.
 25. Russian and English UI text follows the Android TV system language without mixed-language screens.
-26. Empty-archive guidance explains whether category folders are missing, photos are placed directly in `FamilyArchive`, or formats are unsupported.
+26. Empty-archive guidance explains whether category folders are missing or formats are unsupported; root-level photos must be shown instead of treated as an error.
 
 ### 18. Assumptions
 

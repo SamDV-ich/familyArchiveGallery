@@ -172,6 +172,9 @@ Define a storage interface with operations such as:
 - Find every archive root.
 - List child directories.
 - List child files.
+- Collect supported files in the archive root for the virtual **Uncategorized** category.
+- Recursively collect supported files beneath each first-level directory without turning nested folders into categories.
+- Build a virtual **All photos** category from every discovered photo.
 - Open a read stream.
 - Read size and modification time.
 - Check whether a node still exists.
@@ -260,6 +263,7 @@ Device tests:
 - USB attached before startup.
 - USB attached while application is open.
 - Archive root present and missing.
+- Root-level photos, nested photos, and the unified all-photos list.
 - Android 10–12 legacy read permission grant and denial.
 - Android 13+ all-files permission and SAF fallback.
 

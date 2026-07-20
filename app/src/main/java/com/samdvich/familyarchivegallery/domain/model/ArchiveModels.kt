@@ -29,6 +29,7 @@ data class PhotoCategory(
 data class ArchiveScanResult(
     val sourceId: String,
     val categories: List<PhotoCategory>,
+    val rootPhotos: List<PhotoItem>,
     val hasNoMediaMarker: Boolean,
     val firstLevelDirectoryCount: Int,
     val rootSupportedPhotoCount: Int

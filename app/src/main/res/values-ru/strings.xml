@@ -9,6 +9,8 @@
     <string name="retry_search">Повторить поиск</string>
     <string name="retry">Повторить</string>
     <string name="family_archive_title">Семейный архив</string>
+    <string name="all_photos_category">Все фотографии</string>
+    <string name="uncategorized_category">Без категории</string>
     <string name="scanning_archive">Сканирование…</string>
     <plurals name="category_count">
         <item quantity="one">%1$d категория</item>
@@ -27,7 +29,6 @@
     <string name="archive_empty_title">Архив пуст</string>
     <string name="archive_empty_message">Поддерживаемые фотографии не найдены. Форматы: JPG, JPEG, PNG, WebP, BMP, HEIC и HEIF.</string>
     <string name="archive_no_category_folders">Папка FamilyArchive найдена, но в ней нет папок-категорий. Создайте внутри FamilyArchive папки и поместите в них фотографии.</string>
-    <string name="archive_root_photos_message">Фотографии найдены непосредственно в FamilyArchive. Переместите их в папки-категории первого уровня, например FamilyArchive/Семья/photo.jpg.</string>
     <string name="access_legacy_message">Разрешите приложению читать файлы на подключённом USB-накопителе.</string>
     <string name="access_document_tree_message">Выберите папку FamilyArchive один раз. Android сохранит доступ после перезагрузки.</string>
     <string name="access_all_files_message">Выберите папку FamilyArchive или корень USB-накопителя. Android сохранит доступ после перезагрузки.</string>

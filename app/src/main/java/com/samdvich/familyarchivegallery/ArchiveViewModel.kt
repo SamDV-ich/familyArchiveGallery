@@ -11,6 +11,8 @@ import com.samdvich.familyarchivegallery.data.update.GitHubUpdateRepository
 import com.samdvich.familyarchivegallery.data.update.UpdateStatus
 import com.samdvich.familyarchivegallery.data.update.UpdateUiState
 import com.samdvich.familyarchivegallery.domain.model.PhotoCategory
+import com.samdvich.familyarchivegallery.domain.model.PhotoItem
+import com.samdvich.familyarchivegallery.domain.model.NaturalOrder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -234,23 +236,22 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
                 status = ArchiveStatus.ERROR,
                 message = outcome.message
             )
-            is ScanOutcome.Success -> ArchiveUiState(
-                status = ArchiveStatus.READY,
-                categories = outcome.result.categories,
-                isScanning = false,
-                hasNoMediaMarker = outcome.result.hasNoMediaMarker,
-                message = if (outcome.result.categories.isEmpty()) {
-                    when {
-                        outcome.result.rootSupportedPhotoCount > 0 -> {
-                            text(R.string.archive_root_photos_message)
-                        }
-                        outcome.result.firstLevelDirectoryCount == 0 -> {
+            is ScanOutcome.Success -> {
+                val categories = displayCategories(outcome.result)
+                ArchiveUiState(
+                    status = ArchiveStatus.READY,
+                    categories = categories,
+                    isScanning = false,
+                    hasNoMediaMarker = outcome.result.hasNoMediaMarker,
+                    message = if (categories.isEmpty()) {
+                        if (outcome.result.firstLevelDirectoryCount == 0) {
                             text(R.string.archive_no_category_folders)
+                        } else {
+                            text(R.string.archive_empty_message)
                         }
-                        else -> text(R.string.archive_empty_message)
-                    }
-                } else null
-            )
+                    } else null
+                )
+            }
         }
 
         val currentScreen = _screen.value
@@ -266,6 +267,42 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private fun displayCategories(
+        result: com.samdvich.familyarchivegallery.domain.model.ArchiveScanResult
+    ): List<PhotoCategory> {
+        val rootPhotos = result.rootPhotos
+        val regularCategories = result.categories
+        val allPhotos = (rootPhotos + regularCategories.flatMap(PhotoCategory::photos))
+            .sortedWith(compareBy(NaturalOrder) { it.relativePath })
+        if (allPhotos.isEmpty()) return emptyList()
+
+        val allCategory = virtualCategory(
+            id = ALL_PHOTOS_CATEGORY_ID,
+            name = text(R.string.all_photos_category),
+            photos = allPhotos
+        )
+        val uncategorizedCategory = rootPhotos.takeIf(List<PhotoItem>::isNotEmpty)?.let { photos ->
+            virtualCategory(
+                id = ArchiveScanner.ROOT_PHOTOS_CATEGORY_ID,
+                name = text(R.string.uncategorized_category),
+                photos = photos
+            )
+        }
+        return buildList {
+            add(allCategory)
+            uncategorizedCategory?.let(::add)
+            addAll(regularCategories)
+        }
+    }
+
+    private fun virtualCategory(id: String, name: String, photos: List<PhotoItem>): PhotoCategory =
+        PhotoCategory(
+            id = id,
+            name = name,
+            relativePath = "",
+            photos = photos
+        )
+
     private sealed interface ScanOutcome {
         data object NoStorage : ScanOutcome
         data object ArchiveNotFound : ScanOutcome
@@ -274,4 +311,8 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun text(@StringRes resourceId: Int): String = getApplication<Application>().getString(resourceId)
+
+    private companion object {
+        const val ALL_PHOTOS_CATEGORY_ID = "all-photos"
+    }
 }

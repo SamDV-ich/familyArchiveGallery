@@ -26,15 +26,20 @@ class ArchiveScanner(private val context: Context) {
             .asSequence()
             .mapNotNull { category -> scanFileCategory(sourceId, root, category) }
             .toList()
+        val rootPhotos = rootChildren
+            .asSequence()
+            .filter { it.isFile && it.canRead() && isSupportedImage(it.name) }
+            .map { file -> scanFilePhoto(sourceId, root, file, ROOT_PHOTOS_CATEGORY_ID) }
+            .sortedWith(compareBy(NaturalOrder) { it.relativePath })
+            .toList()
 
         return ArchiveScanResult(
             sourceId = sourceId,
             categories = categories,
+            rootPhotos = rootPhotos,
             hasNoMediaMarker = File(root, ".nomedia").isFile,
             firstLevelDirectoryCount = categoryDirectories.size,
-            rootSupportedPhotoCount = rootChildren.count {
-                it.isFile && it.canRead() && isSupportedImage(it.name)
-            }
+            rootSupportedPhotoCount = rootPhotos.size
         )
     }
 
@@ -45,6 +50,9 @@ class ArchiveScanner(private val context: Context) {
             categories = results
                 .flatMap(ArchiveScanResult::categories)
                 .sortedWith(compareBy(NaturalOrder) { it.name }),
+            rootPhotos = results
+                .flatMap(ArchiveScanResult::rootPhotos)
+                .sortedWith(compareBy(NaturalOrder) { it.relativePath }),
             // Show a warning if any discovered archive could still enter Android's media library.
             hasNoMediaMarker = results.all(ArchiveScanResult::hasNoMediaMarker),
             firstLevelDirectoryCount = results.sumOf(ArchiveScanResult::firstLevelDirectoryCount),
@@ -73,15 +81,20 @@ class ArchiveScanner(private val context: Context) {
             .asSequence()
             .mapNotNull { category -> scanDocumentCategory(sourceId, category) }
             .toList()
+        val rootPhotos = rootChildren
+            .asSequence()
+            .filter { it.isFile && isSupportedImage(it.name.orEmpty()) }
+            .map { file -> scanDocumentPhoto(sourceId, file, ROOT_PHOTOS_CATEGORY_ID) }
+            .sortedWith(compareBy(NaturalOrder) { it.relativePath })
+            .toList()
 
         return ArchiveScanResult(
             sourceId = sourceId,
             categories = categories,
+            rootPhotos = rootPhotos,
             hasNoMediaMarker = root.findFile(".nomedia")?.isFile == true,
             firstLevelDirectoryCount = categoryDirectories.size,
-            rootSupportedPhotoCount = rootChildren.count {
-                it.isFile && isSupportedImage(it.name.orEmpty())
-            }
+            rootSupportedPhotoCount = rootPhotos.size
         )
     }
 
@@ -96,18 +109,8 @@ class ArchiveScanner(private val context: Context) {
                 directory.listFiles().orEmpty().forEach { child ->
                     when {
                         child.isDirectory && !child.isHidden && !child.name.startsWith('.') -> pending.add(child)
-                        child.isFile && child.canRead() && isSupportedImage(child.name) -> add(
-                            PhotoItem(
-                                id = stableId(sourceId, child.relativeTo(root).invariantSeparatorsPath),
-                                categoryId = categoryId,
-                                name = child.name,
-                                relativePath = child.relativeTo(root).invariantSeparatorsPath,
-                                source = child.absolutePath,
-                                sourceType = PhotoSourceType.FILE,
-                                size = child.length(),
-                                lastModified = child.lastModified()
-                            )
-                        )
+                        child.isFile && child.canRead() && isSupportedImage(child.name) ->
+                            add(scanFilePhoto(sourceId, root, child, categoryId))
                     }
                 }
             }
@@ -129,18 +132,8 @@ class ArchiveScanner(private val context: Context) {
                     val name = child.name.orEmpty()
                     when {
                         child.isDirectory && !name.startsWith('.') -> pending.add(child to "$path/$name")
-                        child.isFile && isSupportedImage(name) -> add(
-                            PhotoItem(
-                                id = stableId(sourceId, child.uri.toString()),
-                                categoryId = categoryId,
-                                name = name,
-                                relativePath = "$path/$name",
-                                source = child.uri.toString(),
-                                sourceType = PhotoSourceType.CONTENT_URI,
-                                size = child.length(),
-                                lastModified = child.lastModified()
-                            )
-                        )
+                        child.isFile && isSupportedImage(name) ->
+                            add(scanDocumentPhoto(sourceId, child, categoryId, "$path/$name"))
                     }
                 }
             }
@@ -150,8 +143,44 @@ class ArchiveScanner(private val context: Context) {
         return PhotoCategory(categoryId, categoryName, categoryName, photos)
     }
 
+    private fun scanFilePhoto(
+        sourceId: String,
+        root: File,
+        file: File,
+        categoryId: String
+    ): PhotoItem {
+        val relativePath = file.relativeTo(root).invariantSeparatorsPath
+        return PhotoItem(
+            id = stableId(sourceId, relativePath),
+            categoryId = categoryId,
+            name = file.name,
+            relativePath = relativePath,
+            source = file.absolutePath,
+            sourceType = PhotoSourceType.FILE,
+            size = file.length(),
+            lastModified = file.lastModified()
+        )
+    }
+
+    private fun scanDocumentPhoto(
+        sourceId: String,
+        file: DocumentFile,
+        categoryId: String,
+        relativePath: String = file.name.orEmpty()
+    ): PhotoItem = PhotoItem(
+        id = stableId(sourceId, file.uri.toString()),
+        categoryId = categoryId,
+        name = file.name.orEmpty(),
+        relativePath = relativePath,
+        source = file.uri.toString(),
+        sourceType = PhotoSourceType.CONTENT_URI,
+        size = file.length(),
+        lastModified = file.lastModified()
+    )
+
     companion object {
         private val supportedExtensions = setOf("jpg", "jpeg", "png", "webp", "bmp", "heic", "heif")
+        const val ROOT_PHOTOS_CATEGORY_ID = "root-photos"
 
         fun isSupportedImage(name: String): Boolean = name
             .substringAfterLast('.', missingDelimiterValue = "")
