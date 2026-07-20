@@ -19,6 +19,7 @@ import com.samdvich.familyarchivegallery.domain.model.NaturalOrder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,7 +50,8 @@ data class ArchiveUiState(
     val isScanning: Boolean = false,
     val accessRequest: AccessRequest? = null,
     val message: String? = null,
-    val hasNoMediaMarker: Boolean = true
+    val hasNoMediaMarker: Boolean = true,
+    val canRecoverUsbConnection: Boolean = false
 )
 
 sealed interface ArchiveScreen {
@@ -189,12 +191,50 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
     fun hasAccessibleUsbHostDevice() = usbHostReader.hasAccessibleDevice()
 
     fun scanUsbHost(archiveName: String) {
-        startScan {
-            val archiveRoots = runCatching { usbHostReader.scanRoots(archiveName) }
-                .getOrElse { return@startScan ScanOutcome.Failure(text(R.string.usb_host_unreadable)) }
-            if (archiveRoots.isEmpty()) return@startScan ScanOutcome.ArchiveNotFound
-            ScanOutcome.Success(scanner.scanUsbRoots(archiveRoots))
+        startUsbHostScan(archiveName)
+    }
+
+    fun recoverUsbHost(archiveName: String) {
+        when {
+            hasAccessibleUsbHostDevice() -> {
+                usbHostReader.close()
+                startUsbHostScan(
+                    archiveName = archiveName,
+                    initialDelayMs = USB_RECOVERY_DELAY_MS
+                )
+            }
+            usbDeviceAwaitingPermission() != null -> requireAccess(AccessRequest.USB_DEVICE)
+            else -> {
+                usbHostReader.close()
+                _uiState.value = ArchiveUiState(
+                    status = ArchiveStatus.NO_STORAGE,
+                    message = text(R.string.connect_usb_message)
+                )
+            }
         }
+    }
+
+    private fun startUsbHostScan(archiveName: String, initialDelayMs: Long = 0) {
+        startScan {
+            if (initialDelayMs > 0) delay(initialDelayMs)
+            scanUsbHostWithRetry(archiveName)
+        }
+    }
+
+    private suspend fun scanUsbHostWithRetry(archiveName: String): ScanOutcome {
+        repeat(MAX_USB_SCAN_ATTEMPTS) { attempt ->
+            val scan = runCatching { usbHostReader.scanRoots(archiveName) }
+                .getOrElse { return ScanOutcome.UsbUnreadable }
+            if (scan.roots.isNotEmpty()) {
+                return ScanOutcome.Success(scanner.scanUsbRoots(scan.roots))
+            }
+            if (scan.readableDeviceCount > 0) return ScanOutcome.ArchiveNotFound
+            if (scan.unreadableDeviceCount == 0) return ScanOutcome.ArchiveNotFound
+
+            usbHostReader.close()
+            if (attempt < MAX_USB_SCAN_ATTEMPTS - 1) delay(USB_RETRY_DELAY_MS)
+        }
+        return ScanOutcome.UsbUnreadable
     }
 
     fun onUsbDeviceDetached(deviceId: Int) {
@@ -293,7 +333,8 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
             status = if (previous.categories.isEmpty()) ArchiveStatus.CHECKING else ArchiveStatus.READY,
             isScanning = true,
             accessRequest = null,
-            message = null
+            message = null,
+            canRecoverUsbConnection = false
         )
         scanJob = viewModelScope.launch {
             val outcome = try {
@@ -320,6 +361,11 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
             is ScanOutcome.Failure -> ArchiveUiState(
                 status = ArchiveStatus.ERROR,
                 message = outcome.message
+            )
+            ScanOutcome.UsbUnreadable -> ArchiveUiState(
+                status = ArchiveStatus.ERROR,
+                message = text(R.string.usb_host_unreadable_recovery),
+                canRecoverUsbConnection = true
             )
             is ScanOutcome.Success -> {
                 val categories = displayCategories(outcome.result)
@@ -402,6 +448,7 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
     private sealed interface ScanOutcome {
         data object NoStorage : ScanOutcome
         data object ArchiveNotFound : ScanOutcome
+        data object UsbUnreadable : ScanOutcome
         data class Success(val result: com.samdvich.familyarchivegallery.domain.model.ArchiveScanResult) : ScanOutcome
         data class Failure(val message: String) : ScanOutcome
     }
@@ -427,5 +474,8 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
 
     private companion object {
         const val ALL_PHOTOS_CATEGORY_ID = "all-photos"
+        const val MAX_USB_SCAN_ATTEMPTS = 2
+        const val USB_RETRY_DELAY_MS = 1_500L
+        const val USB_RECOVERY_DELAY_MS = 1_500L
     }
 }

@@ -943,5 +943,7 @@ A feature is complete only when:
 - Keep a stable source identifier on every `PhotoItem` so a detached device can be removed without losing other sources.
 - Close only the detached mass-storage session and clear only its photo handles; close all sessions for the explicit removal-preparation action.
 - Cancel stale scans and image reads, and ignore errors from individual devices, partitions, and empty hub slots.
+- Retry a failed USB Host enumeration once after closing app-owned sessions; expose a dedicated recovery action when all permitted devices remain unreadable.
+- Distinguish an unreadable USB transport from an archive root that is genuinely absent.
 - Add the localized **Prepare USB for removal** action and explain that it releases this app's handles but does not perform Android system unmounting.
 - Validate attach, detach, reconnect, multiple-device, hub/card-reader, and removal-during-image-read scenarios on Android TV 9 and 11.

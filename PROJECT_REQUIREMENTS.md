@@ -479,5 +479,8 @@ Version 1.0 is complete when all of the following are true:
 - A failure in one device, partition, or empty card-reader slot must not cancel discovery on other devices.
 - Detaching one device removes only that device's photos; other storage sources remain visible.
 - Active scans and image reads are cancellable, and USB Host handles are closed when a device is detached.
+- A temporary USB Host read failure triggers one bounded automatic recovery attempt after the app releases its own connections.
+- If every permitted USB device remains unreadable, the UI must report a recoverable USB connection error rather than claiming that `FamilyArchive` is absent.
+- A visible **Retry USB connection** action releases USB Host resources, waits briefly, and enumerates devices again without requiring an app restart.
 - The app provides **Prepare USB for removal**. This stops its own reads and explains that Android TV's system removal action must be used when available.
 - The app never unmounts, formats, writes, deletes, or changes USB contents.

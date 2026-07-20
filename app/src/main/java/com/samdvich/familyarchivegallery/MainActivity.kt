@@ -122,6 +122,7 @@ class MainActivity : ComponentActivity() {
                     updateState = updateState,
                     onGrantAccess = ::grantAccess,
                     onRefresh = ::ensureStorageAccess,
+                    onRecoverUsbConnection = { viewModel.recoverUsbHost(ARCHIVE_DIRECTORY_NAME) },
                     onPrepareUsbRemoval = viewModel::prepareUsbForRemoval,
                     onOpenCategory = viewModel::openCategory,
                     onOpenPhoto = viewModel::openPhoto,

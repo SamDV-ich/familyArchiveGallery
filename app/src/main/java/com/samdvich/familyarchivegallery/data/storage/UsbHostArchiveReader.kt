@@ -8,6 +8,12 @@ import me.jahnen.libaums.core.UsbMassStorageDevice.Companion.getMassStorageDevic
 import me.jahnen.libaums.core.fs.UsbFile
 import java.util.concurrent.ConcurrentHashMap
 
+data class UsbHostScanResult(
+    val roots: List<Pair<String, UsbFile>>,
+    val readableDeviceCount: Int,
+    val unreadableDeviceCount: Int
+)
+
 /** Read-only access to USB mass-storage devices when Android does not mount them for us. */
 class UsbHostArchiveReader(private val context: Context) {
     private val usbManager = context.getSystemService(UsbManager::class.java)
@@ -20,9 +26,11 @@ class UsbHostArchiveReader(private val context: Context) {
     fun hasAccessibleDevice(): Boolean = massStorageDevices()
         .any { usbManager.hasPermission(it.usbDevice) }
 
-    fun scanRoots(archiveName: String): List<Pair<String, UsbFile>> {
+    fun scanRoots(archiveName: String): UsbHostScanResult {
         close()
         val readableDevices = mutableMapOf<Int, UsbMassStorageDevice>()
+        var readableDeviceCount = 0
+        var unreadableDeviceCount = 0
         val roots = buildList {
             massStorageDevices()
                 .filter { usbManager.hasPermission(it.usbDevice) }
@@ -30,17 +38,20 @@ class UsbHostArchiveReader(private val context: Context) {
                     // A hub or multi-slot card reader commonly exposes empty slots as
                     // separate mass-storage devices/LUNs. One unreadable slot must not
                     // prevent a real flash drive on the same hub from being scanned.
-                    val deviceRoots = runCatching {
+                    val deviceRoots = try {
                         device.init()
                         openDevices[device.usbDevice.deviceId] = device
-                        device.partitions.mapIndexedNotNull { index, partition ->
+                        val rootsForDevice = device.partitions.mapIndexedNotNull { index, partition ->
                             partition.fileSystem.rootDirectory.search(archiveName)
                                 ?.takeIf { it.isDirectory }
                                 ?.let { root ->
                                     "usb-host:${device.usbDevice.deviceId}:$index" to root
                                 }
                         }
-                    }.getOrElse {
+                        readableDeviceCount++
+                        rootsForDevice
+                    } catch (_: Exception) {
+                        unreadableDeviceCount++
                         openDevices.remove(device.usbDevice.deviceId)
                         runCatching { device.close() }
                         emptyList()
@@ -55,7 +66,7 @@ class UsbHostArchiveReader(private val context: Context) {
                 }
         }
         openDevices.putAll(readableDevices)
-        return roots
+        return UsbHostScanResult(roots, readableDeviceCount, unreadableDeviceCount)
     }
 
     fun closeDevice(deviceId: Int) {

@@ -8,6 +8,7 @@
     <string name="archive_open_error_title">Не удалось открыть архив</string>
     <string name="retry_search">Повторить поиск</string>
     <string name="retry">Повторить</string>
+    <string name="retry_usb_connection">Повторить подключение USB</string>
     <string name="family_archive_title">Семейный архив</string>
     <string name="all_photos_category">Все фотографии</string>
     <string name="uncategorized_category">Без категории</string>
@@ -61,6 +62,7 @@
     <string name="folder_picker_not_opened">Приставка не открыла системный выбор папки. Подключите накопитель и разрешите доступ к USB либо включите доступ к файлам в настройках Android.</string>
     <string name="usb_access_denied">Доступ к USB-накопителю не предоставлен.</string>
     <string name="usb_host_unreadable">USB-накопитель обнаружен, но его файловую систему не удалось прочитать через USB Host.</string>
+    <string name="usb_host_unreadable_recovery">USB-накопитель обнаружен, но его не удалось прочитать. Приложение освободило USB-соединение и повторило попытку. Проверьте подключение или питание USB, затем повторите подключение.</string>
     <string name="install_permission_denied">Разрешение на установку приложений не предоставлено</string>
     <string name="system_folder_picker_unavailable">Системный выбор папки недоступен на этой приставке</string>
     <string name="downloaded_apk_unavailable">Загруженный APK больше не доступен</string>

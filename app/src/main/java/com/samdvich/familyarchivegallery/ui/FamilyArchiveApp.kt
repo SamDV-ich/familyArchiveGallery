@@ -70,6 +70,7 @@ fun FamilyArchiveApp(
     updateState: UpdateUiState,
     onGrantAccess: (AccessRequest) -> Unit,
     onRefresh: () -> Unit,
+    onRecoverUsbConnection: () -> Unit,
     onPrepareUsbRemoval: () -> Unit,
     onOpenCategory: (String) -> Unit,
     onOpenPhoto: (String, Int) -> Unit,
@@ -109,8 +110,14 @@ fun FamilyArchiveApp(
                 ArchiveStatus.ERROR -> StatusScreen(
                     title = stringResource(R.string.archive_open_error_title),
                     message = uiState.message,
-                    actionLabel = stringResource(R.string.retry),
-                    onAction = onRefresh
+                    actionLabel = stringResource(
+                        if (uiState.canRecoverUsbConnection) {
+                            R.string.retry_usb_connection
+                        } else {
+                            R.string.retry
+                        }
+                    ),
+                    onAction = if (uiState.canRecoverUsbConnection) onRecoverUsbConnection else onRefresh
                 )
                 ArchiveStatus.READY -> {
                     BackHandler(enabled = screen !is ArchiveScreen.Categories) { onBack() }

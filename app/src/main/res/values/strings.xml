@@ -8,6 +8,7 @@
     <string name="archive_open_error_title">Could not open the archive</string>
     <string name="retry_search">Search again</string>
     <string name="retry">Retry</string>
+    <string name="retry_usb_connection">Retry USB connection</string>
     <string name="family_archive_title">Family archive</string>
     <string name="all_photos_category">All photos</string>
     <string name="uncategorized_category">Uncategorized</string>
@@ -57,6 +58,7 @@
     <string name="folder_picker_not_opened">The TV did not open the system folder picker. Connect the USB drive and allow USB drive access instead, or enable file access in Android settings.</string>
     <string name="usb_access_denied">USB drive access was not granted.</string>
     <string name="usb_host_unreadable">The USB drive was detected, but its file system could not be read through USB Host.</string>
+    <string name="usb_host_unreadable_recovery">A USB drive was detected but could not be read. The app released its USB connection and retried. Check the USB connection or power, then retry the USB connection.</string>
     <string name="install_permission_denied">Permission to install applications was not granted</string>
     <string name="system_folder_picker_unavailable">The system folder picker is unavailable on this device</string>
     <string name="downloaded_apk_unavailable">The downloaded APK is no longer available</string>
