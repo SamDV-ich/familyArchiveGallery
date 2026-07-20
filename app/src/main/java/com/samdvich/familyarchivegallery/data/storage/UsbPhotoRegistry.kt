@@ -11,14 +11,28 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object UsbPhotoRegistry {
     private val files = ConcurrentHashMap<String, UsbFile>()
+    private val sourceByPhoto = ConcurrentHashMap<String, String>()
 
-    fun register(id: String, file: UsbFile) {
+    fun register(id: String, sourceId: String, file: UsbFile) {
         files[id] = file
+        sourceByPhoto[id] = sourceId
     }
 
     fun open(id: String): InputStream = UsbFileInputStream(
         requireNotNull(files[id]) { "USB photo is no longer connected" }
     )
 
-    fun clear() = files.clear()
+    fun clearSourcePrefix(prefix: String) {
+        sourceByPhoto.entries
+            .filter { it.value.startsWith(prefix) }
+            .forEach { entry ->
+                sourceByPhoto.remove(entry.key)
+                files.remove(entry.key)
+            }
+    }
+
+    fun clear() {
+        sourceByPhoto.clear()
+        files.clear()
+    }
 }

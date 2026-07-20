@@ -25,6 +25,9 @@
         <item quantity="other">%1$d фотографии</item>
     </plurals>
     <string name="refresh_photo_list">Обновить список фотографий</string>
+    <string name="prepare_usb_removal">Подготовить USB к извлечению</string>
+    <string name="usb_ready_for_removal">Приложение завершило работу с накопителем. Теперь его можно отключить. Если Android TV показывает системное уведомление об извлечении, воспользуйтесь им.</string>
+    <string name="usb_disconnected_message">USB-накопитель отключён. Остальные источники архива доступны.</string>
     <string name="nomedia_warning">В папке FamilyArchive отсутствует файл .nomedia. Фотографии могут появиться в системной галерее.</string>
     <string name="archive_empty_title">Архив пуст</string>
     <string name="archive_empty_message">Поддерживаемые фотографии не найдены. Форматы: JPG, JPEG, PNG, WebP, BMP, HEIC и HEIF.</string>

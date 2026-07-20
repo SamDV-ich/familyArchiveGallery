@@ -58,6 +58,7 @@ import com.samdvich.familyarchivegallery.BuildConfig
 import com.samdvich.familyarchivegallery.R
 import com.samdvich.familyarchivegallery.domain.model.PhotoCategory
 import com.samdvich.familyarchivegallery.domain.model.PhotoItem
+import com.samdvich.familyarchivegallery.domain.model.PhotoSourceType
 import com.samdvich.familyarchivegallery.data.update.UpdateStatus
 import com.samdvich.familyarchivegallery.data.update.UpdateUiState
 import com.samdvich.familyarchivegallery.ui.components.ArchiveImage
@@ -69,6 +70,7 @@ fun FamilyArchiveApp(
     updateState: UpdateUiState,
     onGrantAccess: (AccessRequest) -> Unit,
     onRefresh: () -> Unit,
+    onPrepareUsbRemoval: () -> Unit,
     onOpenCategory: (String) -> Unit,
     onOpenPhoto: (String, Int) -> Unit,
     onMoveViewer: (Int) -> Unit,
@@ -117,6 +119,7 @@ fun FamilyArchiveApp(
                             state = uiState,
                             updateState = updateState,
                             onRefresh = onRefresh,
+                            onPrepareUsbRemoval = onPrepareUsbRemoval,
                             onUpdateAction = onUpdateAction,
                             onOpenCategory = onOpenCategory
                         )
@@ -205,6 +208,7 @@ private fun CategoriesScreen(
     state: ArchiveUiState,
     updateState: UpdateUiState,
     onRefresh: () -> Unit,
+    onPrepareUsbRemoval: () -> Unit,
     onUpdateAction: () -> Unit,
     onOpenCategory: (String) -> Unit
 ) {
@@ -256,6 +260,15 @@ private fun CategoriesScreen(
             )
         }
 
+        state.message?.let { message ->
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 58.dp, vertical = 4.dp),
+                fontSize = 16.sp
+            )
+        }
+
         if (!state.hasNoMediaMarker) {
             Text(
                 text = stringResource(R.string.nomedia_warning),
@@ -293,6 +306,15 @@ private fun CategoriesScreen(
                     label = stringResource(R.string.refresh_photo_list),
                     onClick = onRefresh
                 )
+                if (state.categories.any { category ->
+                        category.photos.any { it.sourceType == PhotoSourceType.USB_FILE }
+                    }) {
+                    Spacer(Modifier.width(14.dp))
+                    ActionButton(
+                        label = stringResource(R.string.prepare_usb_removal),
+                        onClick = onPrepareUsbRemoval
+                    )
+                }
             }
         }
     }

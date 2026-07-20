@@ -467,3 +467,13 @@ Version 1.0 is complete when all of the following are true:
 - Categories are represented only by first-level directories.
 - Natural filename sorting is the default.
 - The first release is read-only and offline.
+
+### 19. USB lifecycle and removal safety
+
+- USB attachment and detachment are detected automatically while the app is visible.
+- A short debounce is used after attachment so hubs and card readers can finish enumeration.
+- A failure in one device, partition, or empty card-reader slot must not cancel discovery on other devices.
+- Detaching one device removes only that device's photos; other storage sources remain visible.
+- Active scans and image reads are cancellable, and USB Host handles are closed when a device is detached.
+- The app provides **Prepare USB for removal**. This stops its own reads and explains that Android TV's system removal action must be used when available.
+- The app never unmounts, formats, writes, deletes, or changes USB contents.

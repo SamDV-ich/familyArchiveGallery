@@ -14,6 +14,7 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.ArrayDeque
 import java.util.UUID
+import java.util.concurrent.CancellationException
 
 class ArchiveScanner(private val context: Context) {
     fun scanFileRoot(root: File): ArchiveScanResult {
@@ -26,7 +27,10 @@ class ArchiveScanner(private val context: Context) {
             .toList()
         val categories = categoryDirectories
             .asSequence()
-            .mapNotNull { category -> scanFileCategory(sourceId, root, category) }
+            .mapNotNull { category ->
+                checkForCancellation()
+                runCatching { scanFileCategory(sourceId, root, category) }.getOrNull()
+            }
             .toList()
         val rootPhotos = rootChildren
             .asSequence()
@@ -63,7 +67,10 @@ class ArchiveScanner(private val context: Context) {
     }
 
     fun scanUsbRoots(roots: List<Pair<String, UsbFile>>): ArchiveScanResult {
-        val results = roots.map { (sourceId, root) -> scanUsbRoot(sourceId, root) }
+        val results = roots.mapNotNull { (sourceId, root) ->
+            checkForCancellation()
+            runCatching { scanUsbRoot(sourceId, root) }.getOrNull()
+        }
         return ArchiveScanResult(
             sourceId = "multiple-usb-host-roots",
             categories = results.flatMap(ArchiveScanResult::categories)
@@ -89,7 +96,7 @@ class ArchiveScanner(private val context: Context) {
                 ?: error("$archiveName was not found in the selected directory")
         }
         val sourceId = selectedUri.toString()
-        val rootChildren = root.listFiles()
+        val rootChildren = runCatching { root.listFiles().toList() }.getOrDefault(emptyList())
         val categoryDirectories = rootChildren
             .asSequence()
             .filter { it.isDirectory && !it.name.orEmpty().startsWith('.') }
@@ -123,7 +130,8 @@ class ArchiveScanner(private val context: Context) {
             .sortedWith(compareBy(NaturalOrder) { it.name })
             .toList()
         val categories = categoryDirectories.mapNotNull { category ->
-            scanUsbCategory(sourceId, root, category)
+            checkForCancellation()
+            runCatching { scanUsbCategory(sourceId, root, category) }.getOrNull()
         }
         val rootPhotos = rootChildren.asSequence()
             .filter { !it.isDirectory && isSupportedImage(it.name) }
@@ -147,6 +155,7 @@ class ArchiveScanner(private val context: Context) {
             val pending = ArrayDeque<File>()
             pending.add(category)
             while (pending.isNotEmpty()) {
+                checkForCancellation()
                 val directory = pending.removeFirst()
                 directory.listFiles().orEmpty().forEach { child ->
                     when {
@@ -169,6 +178,7 @@ class ArchiveScanner(private val context: Context) {
             val pending = ArrayDeque<Pair<DocumentFile, String>>()
             pending.add(category to categoryName)
             while (pending.isNotEmpty()) {
+                checkForCancellation()
                 val (directory, path) = pending.removeFirst()
                 directory.listFiles().forEach { child ->
                     val name = child.name.orEmpty()
@@ -192,6 +202,7 @@ class ArchiveScanner(private val context: Context) {
             val pending = ArrayDeque<UsbFile>()
             pending.add(category)
             while (pending.isNotEmpty()) {
+                checkForCancellation()
                 pending.removeFirst().listFiles().forEach { child ->
                     when {
                         child.isDirectory && !child.name.startsWith('.') -> pending.add(child)
@@ -216,6 +227,7 @@ class ArchiveScanner(private val context: Context) {
         return PhotoItem(
             id = stableId(sourceId, relativePath),
             categoryId = categoryId,
+            sourceId = sourceId,
             name = file.name,
             relativePath = relativePath,
             source = file.absolutePath,
@@ -233,6 +245,7 @@ class ArchiveScanner(private val context: Context) {
     ): PhotoItem = PhotoItem(
         id = stableId(sourceId, file.uri.toString()),
         categoryId = categoryId,
+        sourceId = sourceId,
         name = file.name.orEmpty(),
         relativePath = relativePath,
         source = file.uri.toString(),
@@ -249,10 +262,11 @@ class ArchiveScanner(private val context: Context) {
     ): PhotoItem {
         val relativePath = file.absolutePath.removePrefix(root.absolutePath).removePrefix("/")
         val id = stableId(sourceId, relativePath)
-        UsbPhotoRegistry.register(id, file)
+        UsbPhotoRegistry.register(id, sourceId, file)
         return PhotoItem(
             id = id,
             categoryId = categoryId,
+            sourceId = sourceId,
             name = file.name,
             relativePath = relativePath,
             source = id,
@@ -269,6 +283,10 @@ class ArchiveScanner(private val context: Context) {
         fun isSupportedImage(name: String): Boolean = name
             .substringAfterLast('.', missingDelimiterValue = "")
             .lowercase() in supportedExtensions
+
+        private fun checkForCancellation() {
+            if (Thread.currentThread().isInterrupted) throw CancellationException()
+        }
 
         private fun stableId(sourceId: String, path: String): String = UUID.nameUUIDFromBytes(
             "$sourceId|$path".toByteArray(StandardCharsets.UTF_8)

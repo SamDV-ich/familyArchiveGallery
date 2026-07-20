@@ -21,6 +21,9 @@
         <item quantity="other">%1$d photos</item>
     </plurals>
     <string name="refresh_photo_list">Refresh photo list</string>
+    <string name="prepare_usb_removal">Prepare USB for removal</string>
+    <string name="usb_ready_for_removal">The app has finished using the USB drive. You can now disconnect it. If Android TV shows a system removal notification, use it first.</string>
+    <string name="usb_disconnected_message">A USB drive was disconnected. The remaining archive sources are still available.</string>
     <string name="nomedia_warning">The FamilyArchive folder does not contain a .nomedia file. Photos may appear in the system gallery.</string>
     <string name="archive_empty_title">Archive is empty</string>
     <string name="archive_empty_message">No supported photos were found. Supported formats: JPG, JPEG, PNG, WebP, BMP, HEIC, and HEIF.</string>

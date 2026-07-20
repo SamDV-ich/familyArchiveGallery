@@ -9,6 +9,7 @@ enum class PhotoSourceType {
 data class PhotoItem(
     val id: String,
     val categoryId: String,
+    val sourceId: String,
     val name: String,
     val relativePath: String,
     val source: String,

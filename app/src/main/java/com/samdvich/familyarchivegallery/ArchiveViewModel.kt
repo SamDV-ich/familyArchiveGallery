@@ -190,6 +190,49 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun onUsbDeviceDetached(deviceId: Int) {
+        scanJob?.cancel()
+        usbHostReader.closeDevice(deviceId)
+        val prefix = "usb-host:$deviceId:"
+        val filtered = _uiState.value.categories
+            .mapNotNull { category ->
+                category.copy(photos = category.photos.filterNot { it.sourceId.startsWith(prefix) })
+                    .takeIf { it.photos.isNotEmpty() }
+            }
+        val remaining = filtered.any { category ->
+            category.photos.any { it.sourceType != com.samdvich.familyarchivegallery.domain.model.PhotoSourceType.USB_FILE }
+        }
+        _uiState.value = _uiState.value.copy(
+            status = if (remaining) ArchiveStatus.READY else ArchiveStatus.ARCHIVE_NOT_FOUND,
+            categories = filtered,
+            isScanning = false,
+            message = text(R.string.usb_disconnected_message)
+        )
+        if (_screen.value !is ArchiveScreen.Categories && categoryForScreen() == null) {
+            _screen.value = ArchiveScreen.Categories
+        }
+    }
+
+    fun prepareUsbForRemoval() {
+        scanJob?.cancel()
+        usbHostReader.close()
+        val filtered = _uiState.value.categories
+            .mapNotNull { category ->
+                category.copy(photos = category.photos.filter {
+                    it.sourceType != com.samdvich.familyarchivegallery.domain.model.PhotoSourceType.USB_FILE
+                }).takeIf { it.photos.isNotEmpty() }
+            }
+        _uiState.value = _uiState.value.copy(
+            status = if (filtered.isEmpty()) ArchiveStatus.ARCHIVE_NOT_FOUND else ArchiveStatus.READY,
+            categories = filtered,
+            isScanning = false,
+            message = text(R.string.usb_ready_for_removal)
+        )
+        if (_screen.value !is ArchiveScreen.Categories && categoryForScreen() == null) {
+            _screen.value = ArchiveScreen.Categories
+        }
+    }
+
     override fun onCleared() {
         usbHostReader.close()
         super.onCleared()
@@ -229,6 +272,12 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun category(id: String): PhotoCategory? = _uiState.value.categories.firstOrNull { it.id == id }
+
+    private fun categoryForScreen(): PhotoCategory? = when (val current = _screen.value) {
+        is ArchiveScreen.Photos -> category(current.categoryId)
+        is ArchiveScreen.Viewer -> category(current.categoryId)
+        ArchiveScreen.Categories -> null
+    }
 
     private fun startScan(block: suspend () -> ScanOutcome) {
         scanJob?.cancel()
@@ -301,6 +350,17 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
     ): List<PhotoCategory> {
         val rootPhotos = result.rootPhotos
         val regularCategories = result.categories
+            .groupBy { it.name.lowercase() }
+            .values
+            .map { sameName ->
+                val first = sameName.first()
+                first.copy(
+                    id = "category:${first.name.lowercase()}",
+                    photos = sameName.flatMap(PhotoCategory::photos)
+                        .sortedWith(compareBy(NaturalOrder) { it.relativePath })
+                )
+            }
+            .sortedWith(compareBy(NaturalOrder) { it.name })
         val allPhotos = (rootPhotos + regularCategories.flatMap(PhotoCategory::photos))
             .sortedWith(compareBy(NaturalOrder) { it.relativePath })
         if (allPhotos.isEmpty()) return emptyList()

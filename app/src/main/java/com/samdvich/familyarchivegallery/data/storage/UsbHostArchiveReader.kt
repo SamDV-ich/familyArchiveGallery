@@ -6,11 +6,12 @@ import android.hardware.usb.UsbManager
 import me.jahnen.libaums.core.UsbMassStorageDevice
 import me.jahnen.libaums.core.UsbMassStorageDevice.Companion.getMassStorageDevices
 import me.jahnen.libaums.core.fs.UsbFile
+import java.util.concurrent.ConcurrentHashMap
 
 /** Read-only access to USB mass-storage devices when Android does not mount them for us. */
 class UsbHostArchiveReader(private val context: Context) {
     private val usbManager = context.getSystemService(UsbManager::class.java)
-    private var openDevices: List<UsbMassStorageDevice> = emptyList()
+    private val openDevices = ConcurrentHashMap<Int, UsbMassStorageDevice>()
 
     fun pendingPermissionDevice(): UsbDevice? = massStorageDevices()
         .firstOrNull { !usbManager.hasPermission(it.usbDevice) }
@@ -21,7 +22,7 @@ class UsbHostArchiveReader(private val context: Context) {
 
     fun scanRoots(archiveName: String): List<Pair<String, UsbFile>> {
         close()
-        val readableDevices = mutableListOf<UsbMassStorageDevice>()
+        val readableDevices = mutableMapOf<Int, UsbMassStorageDevice>()
         val roots = buildList {
             massStorageDevices()
                 .filter { usbManager.hasPermission(it.usbDevice) }
@@ -31,6 +32,7 @@ class UsbHostArchiveReader(private val context: Context) {
                     // prevent a real flash drive on the same hub from being scanned.
                     val deviceRoots = runCatching {
                         device.init()
+                        openDevices[device.usbDevice.deviceId] = device
                         device.partitions.mapIndexedNotNull { index, partition ->
                             partition.fileSystem.rootDirectory.search(archiveName)
                                 ?.takeIf { it.isDirectory }
@@ -39,24 +41,31 @@ class UsbHostArchiveReader(private val context: Context) {
                                 }
                         }
                     }.getOrElse {
+                        openDevices.remove(device.usbDevice.deviceId)
                         runCatching { device.close() }
                         emptyList()
                     }
                     if (deviceRoots.isNotEmpty()) {
-                        readableDevices += device
+                        readableDevices[device.usbDevice.deviceId] = device
                         addAll(deviceRoots)
                     } else {
+                        openDevices.remove(device.usbDevice.deviceId)
                         runCatching { device.close() }
                     }
                 }
         }
-        openDevices = readableDevices
+        openDevices.putAll(readableDevices)
         return roots
     }
 
+    fun closeDevice(deviceId: Int) {
+        openDevices.remove(deviceId)?.let { runCatching { it.close() } }
+        UsbPhotoRegistry.clearSourcePrefix("usb-host:$deviceId:")
+    }
+
     fun close() {
-        openDevices.forEach { runCatching { it.close() } }
-        openDevices = emptyList()
+        openDevices.values.forEach { runCatching { it.close() } }
+        openDevices.clear()
         UsbPhotoRegistry.clear()
     }
 

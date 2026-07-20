@@ -934,3 +934,12 @@ A feature is complete only when:
 - No MediaStore integration has been introduced.
 - The feature does not add an unnecessary permission.
 - Documentation is updated when behavior or assumptions change.
+
+### USB lifecycle and removal safety implementation
+
+- Register attach/detach broadcasts with the Activity lifecycle and debounce attach refreshes by 1.5 seconds.
+- Keep a stable source identifier on every `PhotoItem` so a detached device can be removed without losing other sources.
+- Close only the detached mass-storage session and clear only its photo handles; close all sessions for the explicit removal-preparation action.
+- Cancel stale scans and image reads, and ignore errors from individual devices, partitions, and empty hub slots.
+- Add the localized **Prepare USB for removal** action and explain that it releases this app's handles but does not perform Android system unmounting.
+- Validate attach, detach, reconnect, multiple-device, hub/card-reader, and removal-during-image-read scenarios on Android TV 9 and 11.

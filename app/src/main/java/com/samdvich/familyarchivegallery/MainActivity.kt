@@ -13,6 +13,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -30,10 +32,13 @@ class MainActivity : ComponentActivity() {
     private lateinit var viewModel: ArchiveViewModel
     private val preferences by lazy { getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE) }
     private var receiverRegistered = false
+    private var usbDeviceReceiverRegistered = false
     private var usbPermissionReceiverRegistered = false
     private var pendingUpdateFile: File? = null
     private var installerLaunched = false
     private val usbManager by lazy { getSystemService(UsbManager::class.java) }
+    private val usbEventHandler = Handler(Looper.getMainLooper())
+    private val delayedUsbRefresh = Runnable { ensureStorageAccess() }
 
     private val legacyPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -87,6 +92,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val usbDeviceReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val device = intent?.let(::usbDeviceFromIntent)
+            when (intent?.action) {
+                UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
+                    usbEventHandler.removeCallbacks(delayedUsbRefresh)
+                    usbEventHandler.postDelayed(delayedUsbRefresh, USB_REFRESH_DELAY_MS)
+                }
+                UsbManager.ACTION_USB_DEVICE_DETACHED -> device?.let {
+                    viewModel.onUsbDeviceDetached(it.deviceId)
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         viewModel = ViewModelProvider(this)[ArchiveViewModel::class.java]
@@ -102,6 +122,7 @@ class MainActivity : ComponentActivity() {
                     updateState = updateState,
                     onGrantAccess = ::grantAccess,
                     onRefresh = ::ensureStorageAccess,
+                    onPrepareUsbRemoval = viewModel::prepareUsbForRemoval,
                     onOpenCategory = viewModel::openCategory,
                     onOpenPhoto = viewModel::openPhoto,
                     onMoveViewer = viewModel::moveViewer,
@@ -134,6 +155,19 @@ class MainActivity : ComponentActivity() {
             receiverRegistered = true
         }
         registerUsbPermissionReceiver()
+        if (!usbDeviceReceiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+                addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+            }
+            ContextCompat.registerReceiver(
+                this,
+                usbDeviceReceiver,
+                filter,
+                ContextCompat.RECEIVER_EXPORTED
+            )
+            usbDeviceReceiverRegistered = true
+        }
     }
 
     override fun onResume() {
@@ -148,7 +182,12 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        usbEventHandler.removeCallbacks(delayedUsbRefresh)
         unregisterUsbPermissionReceiver()
+        if (usbDeviceReceiverRegistered) {
+            unregisterReceiver(usbDeviceReceiver)
+            usbDeviceReceiverRegistered = false
+        }
         if (receiverRegistered) {
             unregisterReceiver(storageReceiver)
             receiverRegistered = false
@@ -285,6 +324,14 @@ class MainActivity : ComponentActivity() {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
+    private fun usbDeviceFromIntent(intent: Intent): android.hardware.usb.UsbDevice? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, android.hardware.usb.UsbDevice::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+        }
+
     private fun registerUsbPermissionReceiver() {
         if (usbPermissionReceiverRegistered) return
         val filter = IntentFilter(ACTION_USB_PERMISSION)
@@ -310,5 +357,6 @@ class MainActivity : ComponentActivity() {
         private const val KEY_ARCHIVE_TREE_URI = "archive_tree_uri"
         private const val KEY_USE_SAF_FALLBACK = "use_saf_fallback"
         private const val ACTION_USB_PERMISSION = "com.samdvich.familyarchivegallery.USB_PERMISSION"
+        private const val USB_REFRESH_DELAY_MS = 1_500L
     }
 }
