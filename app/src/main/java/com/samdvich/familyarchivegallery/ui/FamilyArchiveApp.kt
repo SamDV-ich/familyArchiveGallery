@@ -170,7 +170,11 @@ private fun StatusScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = title, fontSize = 34.sp)
+        Text(
+            text = title,
+            color = MaterialTheme.colorScheme.onBackground,
+            fontSize = 34.sp
+        )
         if (!message.isNullOrBlank()) {
             Spacer(Modifier.height(18.dp))
             Text(
@@ -202,7 +206,11 @@ private fun CategoriesScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.family_archive_title), fontSize = 34.sp)
+                Text(
+                    text = stringResource(R.string.family_archive_title),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 34.sp
+                )
                 Text(
                     text = if (state.isScanning) {
                         stringResource(R.string.scanning_archive)
@@ -294,6 +302,7 @@ private fun CategoryCard(category: PhotoCategory, onClick: () -> Unit) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
                 Text(
                     text = category.name,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 20.sp
@@ -346,7 +355,11 @@ private fun PreviewCollage(photos: List<PhotoItem>, modifier: Modifier = Modifie
 private fun PhotosScreen(category: PhotoCategory, onOpenPhoto: (Int) -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(start = 58.dp, top = 38.dp, bottom = 16.dp)) {
-            Text(category.name, fontSize = 32.sp)
+            Text(
+                text = category.name,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 32.sp
+            )
             Text(
                 pluralStringResource(
                     R.plurals.photo_count,
@@ -434,13 +447,18 @@ private fun PhotoViewerScreen(
             ) {
                 Text(
                     text = photo.name,
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                     fontSize = 19.sp
                 )
                 Spacer(Modifier.width(24.dp))
-                Text("${index + 1} / ${category.photos.size}", fontSize = 18.sp)
+                Text(
+                    text = "${index + 1} / ${category.photos.size}",
+                    color = Color.White,
+                    fontSize = 18.sp
+                )
             }
         }
     }
