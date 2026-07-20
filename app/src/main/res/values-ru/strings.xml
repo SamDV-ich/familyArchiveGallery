@@ -31,7 +31,7 @@
     <string name="archive_no_category_folders">Папка FamilyArchive найдена, но в ней нет папок-категорий. Создайте внутри FamilyArchive папки и поместите в них фотографии.</string>
     <string name="access_legacy_message">Разрешите приложению читать файлы на подключённом USB-накопителе.</string>
     <string name="access_document_tree_message">Выберите папку FamilyArchive один раз. Android сохранит доступ после перезагрузки.</string>
-    <string name="access_all_files_message">Выберите папку FamilyArchive или корень USB-накопителя. Android сохранит доступ после перезагрузки.</string>
+    <string name="access_all_files_message">Разрешите доступ ко всем файлам, чтобы приложение могло автоматически читать FamilyArchive во внутренней памяти и на USB-накопителях. Если системная настройка недоступна, выберите папку архива вручную.</string>
     <string name="access_default_message">Предоставьте доступ к папке семейного архива.</string>
     <string name="select_folder">Выбрать папку</string>
     <string name="grant_access">Предоставить доступ</string>

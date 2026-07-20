@@ -44,7 +44,10 @@ class MainActivity : ComponentActivity() {
         runCatching {
             contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        preferences.edit().putString(KEY_ARCHIVE_TREE_URI, uri.toString()).apply()
+        preferences.edit()
+            .putString(KEY_ARCHIVE_TREE_URI, uri.toString())
+            .putBoolean(KEY_USE_SAF_FALLBACK, true)
+            .apply()
         viewModel.scanDocumentTree(uri, ARCHIVE_DIRECTORY_NAME)
     }
 
@@ -113,6 +116,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // The all-files setting does not return an ActivityResult. Re-check it whenever
+        // the user returns from Settings so a granted permission starts a scan immediately.
+        ensureStorageAccess()
+    }
+
     override fun onStop() {
         if (receiverRegistered) {
             unregisterReceiver(storageReceiver)
@@ -123,7 +133,7 @@ class MainActivity : ComponentActivity() {
 
     private fun ensureStorageAccess() {
         when {
-            Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2 -> {
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.R -> {
                 val granted = ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.READ_EXTERNAL_STORAGE
@@ -134,8 +144,11 @@ class MainActivity : ComponentActivity() {
             Environment.isExternalStorageManager() -> viewModel.scanDirect(ARCHIVE_DIRECTORY_NAME)
             else -> {
                 val savedUri = preferences.getString(KEY_ARCHIVE_TREE_URI, null)?.let(Uri::parse)
-                if (savedUri == null) viewModel.requireAccess(AccessRequest.ALL_FILES)
-                else viewModel.scanDocumentTree(savedUri, ARCHIVE_DIRECTORY_NAME)
+                if (preferences.getBoolean(KEY_USE_SAF_FALLBACK, false) && savedUri != null) {
+                    viewModel.scanDocumentTree(savedUri, ARCHIVE_DIRECTORY_NAME)
+                } else {
+                    viewModel.requireAccess(AccessRequest.ALL_FILES)
+                }
             }
         }
     }
@@ -144,15 +157,15 @@ class MainActivity : ComponentActivity() {
         when (request) {
             AccessRequest.LEGACY_READ -> legacyPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
             AccessRequest.DOCUMENT_TREE -> documentTreeLauncher.launch(null)
-            AccessRequest.ALL_FILES -> openDocumentTreeOrAllFilesSettings()
+            AccessRequest.ALL_FILES -> openAllFilesSettingsOrDocumentTree()
         }
     }
 
-    private fun openDocumentTreeOrAllFilesSettings() {
+    private fun openAllFilesSettingsOrDocumentTree() {
         try {
-            documentTreeLauncher.launch(null)
-        } catch (_: ActivityNotFoundException) {
             openAllFilesSettings()
+        } catch (_: ActivityNotFoundException) {
+            openDocumentTreeFallback()
         }
     }
 
@@ -164,14 +177,18 @@ class MainActivity : ComponentActivity() {
         try {
             startActivity(appIntent)
         } catch (_: ActivityNotFoundException) {
-            try {
-                startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
-            } catch (_: ActivityNotFoundException) {
-                viewModel.requireAccess(
-                    AccessRequest.ALL_FILES,
-                    getString(R.string.system_folder_picker_unavailable)
-                )
-            }
+            startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+        }
+    }
+
+    private fun openDocumentTreeFallback() {
+        try {
+            documentTreeLauncher.launch(null)
+        } catch (_: ActivityNotFoundException) {
+            viewModel.requireAccess(
+                AccessRequest.ALL_FILES,
+                getString(R.string.system_folder_picker_unavailable)
+            )
         }
     }
 
@@ -222,5 +239,6 @@ class MainActivity : ComponentActivity() {
         private const val ARCHIVE_DIRECTORY_NAME = "FamilyArchive"
         private const val PREFERENCES_NAME = "archive_access"
         private const val KEY_ARCHIVE_TREE_URI = "archive_tree_uri"
+        private const val KEY_USE_SAF_FALLBACK = "use_saf_fallback"
     }
 }

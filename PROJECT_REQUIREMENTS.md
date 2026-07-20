@@ -114,9 +114,9 @@ Android storage behavior differs by OS version. The application must select an a
 
 | Android version | API | Primary access mode |
 | --- | ---: | --- |
-| Android 9–12 | 28–32 | `READ_EXTERNAL_STORAGE`, legacy mode, and direct `File` access |
-| Android 13+ | 33+ | `MANAGE_EXTERNAL_STORAGE` plus direct `File` access |
-| Fallback | 33+ | Persisted Storage Access Framework directory grant |
+| Android 9–10 | 28–29 | `READ_EXTERNAL_STORAGE`, legacy mode, and direct `File` access |
+| Android 11+ | 30+ | `MANAGE_EXTERNAL_STORAGE` plus direct `File` access |
+| Fallback | 30+ | Persisted Storage Access Framework directory grant when full-access settings are unavailable |
 
 #### 7.1 Android 9
 
@@ -128,9 +128,9 @@ Android storage behavior differs by OS version. The application must select an a
 
 Android 9 does not expose `StorageVolume.getDirectory()`. Mount resolution must therefore be isolated behind a storage adapter and verified on the target Xiaomi firmware.
 
-#### 7.2 Android 10–12
+#### 7.2 Android 10
 
-The application deliberately targets API 29 and declares `requestLegacyExternalStorage="true"`. This preserves read-only direct USB access on Android TV 10–12, including Xiaomi Android TV 11 firmware that omits both DocumentsUI and the all-files settings activity.
+The application deliberately targets API 29 and declares `requestLegacyExternalStorage="true"`. This preserves read-only direct USB access on Android TV 10.
 
 This is a deliberate private-sideload compatibility exception and is not suitable for Google Play publication. Raising `targetSdk` must be followed by a complete USB permission and discovery regression test on `MITV-AYFR0`.
 
@@ -139,7 +139,7 @@ This is a deliberate private-sideload compatibility exception and is not suitabl
 - Keep the archive read-only.
 - Do not use MediaStore.
 
-#### 7.3 Android 13 and Later
+#### 7.3 Android 11 and Later
 
 - Declare `MANAGE_EXTERNAL_STORAGE`.
 - Check access with `Environment.isExternalStorageManager()`.
@@ -148,6 +148,7 @@ This is a deliberate private-sideload compatibility exception and is not suitabl
 - Use `StorageVolume.getDirectory()` where available.
 - Search for `FamilyArchive` automatically.
 - Use a persisted Storage Access Framework grant as a fallback when vendor firmware does not expose usable direct storage access.
+- Recheck access in `onResume` after returning from system settings, then rescan automatically.
 
 ### 8. Supported Image Formats
 
@@ -434,8 +435,8 @@ Version 1.0 is complete when all of the following are true:
 3. The application appears in the Android TV launcher with a proper TV banner.
 4. All screens can be operated with the standard D-pad remote.
 5. Android 9 storage permission is requested and handled correctly.
-6. Android 10–12 read-only legacy USB access is requested and handled correctly.
-7. Android 13+ can use all-files access or retain and reuse a SAF directory grant.
+6. Android 10 legacy USB access is requested and handled correctly.
+7. Android 11+ can use all-files access or retain and reuse a SAF directory grant.
 8. A removable USB drive is detected without querying MediaStore.
 9. `FamilyArchive` is found automatically in every available storage location whenever direct access is available.
 10. Every non-empty first-level folder becomes a category, while nested folders do not.

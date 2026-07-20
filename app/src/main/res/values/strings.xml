@@ -27,7 +27,7 @@
     <string name="archive_no_category_folders">FamilyArchive was found, but it has no category folders. Create folders inside FamilyArchive and place photos in them.</string>
     <string name="access_legacy_message">Allow the application to read files on the connected USB drive.</string>
     <string name="access_document_tree_message">Select the FamilyArchive folder once. Android will retain access after a restart.</string>
-    <string name="access_all_files_message">Select the FamilyArchive folder or the USB drive root. Android will retain access after a restart.</string>
+    <string name="access_all_files_message">Allow access to all files so the app can automatically read FamilyArchive on the TV and USB drives. If this system setting is unavailable, select the archive folder manually.</string>
     <string name="access_default_message">Grant access to the family archive folder.</string>
     <string name="select_folder">Select folder</string>
     <string name="grant_access">Grant access</string>

@@ -57,7 +57,7 @@ compileSdk: 36
 targetSdk: 29
 ```
 
-The API 29 target is an intentional compatibility measure for this private sideload application. Xiaomi Android TV 11 firmware on `MITV-AYFR0` omits both DocumentsUI and the all-files settings screen; API 29 plus `requestLegacyExternalStorage` preserves read-only USB access. Keep compile SDK current and reassess this exception if distribution moves to Google Play. Do not raise the target without repeating the full USB permission and discovery test on that device.
+The API 29 target is an intentional compatibility measure for this private sideload application. Some Xiaomi Android TV firmware may omit DocumentsUI or the all-files settings screen, so the app must detect both system paths at runtime and retain a SAF fallback. Keep compile SDK current and reassess this exception if distribution moves to Google Play. Do not raise the target without repeating the full USB permission and discovery test on that device.
 
 #### 3.3 Configure Compose for TV
 
@@ -225,7 +225,7 @@ Run device diagnostics during development and record:
 
 Debug diagnostics may contain paths, but release logging must redact them.
 
-#### 4.4 Android 10–12 Implementation
+#### 4.4 Android 10 Implementation
 
 Implement:
 
@@ -236,13 +236,14 @@ Implement:
 
 The first-run UI must clearly state that file access is read-only and must be granted once.
 
-#### 4.5 Android 13+ Implementation
+#### 4.5 Android 11+ Implementation
 
 Implement:
 
 - Manifest declaration for `MANAGE_EXTERNAL_STORAGE`.
 - `Environment.isExternalStorageManager()` check.
 - Settings intent for the application-specific all-files access screen.
+- Automatic access recheck and rescan in `onResume` after returning from Settings.
 - Mounted storage-volume enumeration, including primary shared storage.
 - Direct mount path access through `StorageVolume.getDirectory()`.
 - SAF fallback when the settings page or direct access is unavailable on vendor firmware.
@@ -264,8 +265,8 @@ Device tests:
 - USB attached while application is open.
 - Archive root present and missing.
 - Root-level photos, nested photos, and the unified all-photos list.
-- Android 10–12 legacy read permission grant and denial.
-- Android 13+ all-files permission and SAF fallback.
+- Android 10 legacy read permission grant and denial.
+- Android 11+ all-files permission and SAF fallback.
 
 #### 4.7 Phase 1 Exit Criteria
 
@@ -706,7 +707,8 @@ Measure on the Xiaomi TV Stick:
 | `MITV-AESP0`, Android TV 9 / API 28 | Complete regression, USB permission, path resolution, and focus tests |
 | `MITV-AYFR0`, Android TV 11 | Complete regression, legacy USB permission, and missing-system-picker recovery tests |
 | Android TV API 28 emulator | UI and permission-state tests |
-| Android TV API 29–32 emulator/device | Legacy read-only permission and direct storage tests |
+| Android TV API 29 emulator/device | Legacy read-only permission and direct storage tests |
+| Android TV API 30+ emulator/device | All-files permission and SAF fallback tests |
 | Android TV API 33+ emulator/device | All-files access plus SAF fallback tests |
 | 1080p display | Complete UI validation |
 
@@ -858,7 +860,7 @@ Mitigation:
 Mitigation:
 
 - Detect failure to launch or grant access.
-- Use legacy read-only USB access on Android 10–12.
+- Use legacy read-only USB access on Android 10.
 - Offer SAF directory selection on firmware that implements DocumentsUI.
 
 #### Risk: Large Photos Cause Memory Pressure
@@ -906,8 +908,8 @@ The first practical coding sequence should be:
 5. Prove that the Xiaomi TV Stick can read a test file from USB.
 6. Find every `FamilyArchive` root automatically.
 7. Implement the storage abstraction.
-8. Add Android 10–12 legacy read-only storage support.
-9. Add Android 13+ all-files and SAF fallback support.
+8. Add Android 10 legacy read-only storage support.
+9. Add Android 11+ all-files and SAF fallback support.
 10. Implement the scanner and unit tests.
 11. Publish scanner results through ViewModel state.
 12. Build the category grid.
