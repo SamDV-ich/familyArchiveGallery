@@ -2,7 +2,8 @@ package com.samdvich.familyarchivegallery.domain.model
 
 enum class PhotoSourceType {
     FILE,
-    CONTENT_URI
+    CONTENT_URI,
+    USB_FILE
 }
 
 data class PhotoItem(

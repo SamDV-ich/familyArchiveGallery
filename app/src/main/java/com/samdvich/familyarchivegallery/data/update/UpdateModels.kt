@@ -14,7 +14,7 @@ enum class UpdateStatus {
     UP_TO_DATE,
     AVAILABLE,
     DOWNLOADING,
-    READY_TO_INSTALL,
+    INSTALLING,
     ERROR
 }
 

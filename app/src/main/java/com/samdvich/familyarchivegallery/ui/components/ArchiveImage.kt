@@ -2,6 +2,7 @@ package com.samdvich.familyarchivegallery.ui.components
 
 import android.graphics.ImageDecoder
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.LruCache
 import androidx.compose.foundation.Image
@@ -19,6 +20,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import com.samdvich.familyarchivegallery.domain.model.PhotoItem
 import com.samdvich.familyarchivegallery.domain.model.PhotoSourceType
+import com.samdvich.familyarchivegallery.data.storage.UsbPhotoRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -56,12 +58,13 @@ fun ArchiveImage(
 }
 
 private fun decodeBitmap(context: android.content.Context, photo: PhotoItem, maxDimension: Int): Bitmap {
+    if (photo.sourceType == PhotoSourceType.USB_FILE) {
+        return decodeUsbBitmap(photo.source, maxDimension)
+    }
     val source = when (photo.sourceType) {
         PhotoSourceType.FILE -> ImageDecoder.createSource(File(photo.source))
-        PhotoSourceType.CONTENT_URI -> ImageDecoder.createSource(
-            context.contentResolver,
-            Uri.parse(photo.source)
-        )
+        PhotoSourceType.CONTENT_URI -> ImageDecoder.createSource(context.contentResolver, Uri.parse(photo.source))
+        PhotoSourceType.USB_FILE -> error("Handled before creating an ImageDecoder source")
     }
     return ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
         val width = info.size.width
@@ -76,6 +79,23 @@ private fun decodeBitmap(context: android.content.Context, photo: PhotoItem, max
         }
         decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
     }
+}
+
+private fun decodeUsbBitmap(source: String, maxDimension: Int): Bitmap {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    UsbPhotoRegistry.open(source).use { BitmapFactory.decodeStream(it, null, bounds) }
+    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "Unsupported USB image" }
+    var sample = 1
+    while (maxOf(bounds.outWidth / sample, bounds.outHeight / sample) > maxDimension * 2) {
+        sample *= 2
+    }
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = sample
+        inPreferredConfig = Bitmap.Config.ARGB_8888
+    }
+    return requireNotNull(UsbPhotoRegistry.open(source).use {
+        BitmapFactory.decodeStream(it, null, options)
+    }) { "Unable to decode USB image" }
 }
 
 private object ArchiveBitmapCache {

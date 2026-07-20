@@ -54,6 +54,7 @@ import com.samdvich.familyarchivegallery.AccessRequest
 import com.samdvich.familyarchivegallery.ArchiveScreen
 import com.samdvich.familyarchivegallery.ArchiveStatus
 import com.samdvich.familyarchivegallery.ArchiveUiState
+import com.samdvich.familyarchivegallery.BuildConfig
 import com.samdvich.familyarchivegallery.R
 import com.samdvich.familyarchivegallery.domain.model.PhotoCategory
 import com.samdvich.familyarchivegallery.domain.model.PhotoItem
@@ -152,6 +153,15 @@ fun FamilyArchiveApp(
                         .padding(36.dp)
                 )
             }
+
+            Text(
+                text = stringResource(R.string.app_version, BuildConfig.VERSION_NAME),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp)
+            )
         }
     }
 }
@@ -522,10 +532,12 @@ private fun ActionButton(
             )
             .onFocusChanged { focused = it.isFocused }
             .clickable(
-                enabled = enabled,
+                // Keep a disabled asynchronous action focused on TV. Otherwise the
+                // focus engine jumps to a different button while it is running.
+                enabled = true,
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick
+                onClick = { if (enabled) onClick() }
             )
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
@@ -538,6 +550,7 @@ private fun accessMessage(request: AccessRequest?): String = when (request) {
     AccessRequest.LEGACY_READ -> stringResource(R.string.access_legacy_message)
     AccessRequest.DOCUMENT_TREE -> stringResource(R.string.access_document_tree_message)
     AccessRequest.ALL_FILES -> stringResource(R.string.access_all_files_message)
+    AccessRequest.USB_DEVICE -> stringResource(R.string.access_usb_host_message)
     null -> stringResource(R.string.access_default_message)
 }
 
@@ -545,6 +558,7 @@ private fun accessMessage(request: AccessRequest?): String = when (request) {
 private fun accessActionLabel(request: AccessRequest?): String = when (request) {
     AccessRequest.DOCUMENT_TREE -> stringResource(R.string.select_folder)
     AccessRequest.ALL_FILES -> stringResource(R.string.open_file_access_settings)
+    AccessRequest.USB_DEVICE -> stringResource(R.string.grant_usb_access)
     AccessRequest.LEGACY_READ, null -> stringResource(R.string.grant_access)
 }
 
@@ -557,6 +571,6 @@ private fun updateButtonLabel(state: UpdateUiState): String = when (state.status
         state.info?.versionName.orEmpty()
     )
     UpdateStatus.DOWNLOADING -> stringResource(R.string.downloading_update, state.progress)
-    UpdateStatus.READY_TO_INSTALL -> stringResource(R.string.install_update)
+    UpdateStatus.INSTALLING -> stringResource(R.string.opening_installer)
     UpdateStatus.ERROR -> stringResource(R.string.retry_update)
 }

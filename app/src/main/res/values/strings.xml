@@ -29,14 +29,16 @@
     <string name="access_document_tree_message">Select the FamilyArchive folder once. Android will retain access after a restart.</string>
     <string name="access_all_files_message">Allow access to all files so the app can automatically read FamilyArchive on the TV and USB drives. If this system setting is unavailable, select the archive folder manually.</string>
     <string name="access_default_message">Grant access to the family archive folder.</string>
+    <string name="access_usb_host_message">Allow read-only access to the connected USB drive. This works even when this TV does not provide a system folder picker.</string>
     <string name="select_folder">Select folder</string>
     <string name="open_file_access_settings">Open access settings</string>
     <string name="grant_access">Grant access</string>
+    <string name="grant_usb_access">Allow USB drive access</string>
     <string name="check_updates">Check for updates</string>
     <string name="checking_updates">Checking…</string>
     <string name="update_to_version">Update to %1$s</string>
     <string name="downloading_update">Downloading %1$d%%</string>
-    <string name="install_update">Install update</string>
+    <string name="opening_installer">Opening installer…</string>
     <string name="retry_update">Retry update</string>
     <string name="latest_version_installed">The latest version is installed</string>
     <string name="update_check_failed">Could not check for updates</string>
@@ -46,8 +48,12 @@
     <string name="connect_usb_message">No readable storage locations were found. Connect a USB drive or use the TV’s internal storage.</string>
     <string name="archive_folder_not_found_message">The FamilyArchive folder was not found in any available storage location.</string>
     <string name="folder_not_selected">No folder was selected</string>
+    <string name="folder_picker_not_opened">The TV did not open the system folder picker. Connect the USB drive and allow USB drive access instead, or enable file access in Android settings.</string>
+    <string name="usb_access_denied">USB drive access was not granted.</string>
+    <string name="usb_host_unreadable">The USB drive was detected, but its file system could not be read through USB Host.</string>
     <string name="install_permission_denied">Permission to install applications was not granted</string>
     <string name="system_folder_picker_unavailable">The system folder picker is unavailable on this device</string>
     <string name="downloaded_apk_unavailable">The downloaded APK is no longer available</string>
     <string name="package_installer_unavailable">Could not open the system package installer</string>
+    <string name="app_version">Version %1$s</string>
 </resources>

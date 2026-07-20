@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.samdvich.familyarchivegallery.data.scanner.ArchiveScanner
 import com.samdvich.familyarchivegallery.data.storage.UsbStorageLocator
+import com.samdvich.familyarchivegallery.data.storage.UsbHostArchiveReader
 import com.samdvich.familyarchivegallery.data.update.GitHubUpdateRepository
 import com.samdvich.familyarchivegallery.data.update.UpdateStatus
 import com.samdvich.familyarchivegallery.data.update.UpdateUiState
@@ -35,7 +36,8 @@ enum class ArchiveStatus {
 enum class AccessRequest {
     LEGACY_READ,
     DOCUMENT_TREE,
-    ALL_FILES
+    ALL_FILES,
+    USB_DEVICE
 }
 
 data class ArchiveUiState(
@@ -56,6 +58,7 @@ sealed interface ArchiveScreen {
 class ArchiveViewModel(application: Application) : AndroidViewModel(application) {
     private val scanner = ArchiveScanner(application)
     private val storageLocator = UsbStorageLocator(application)
+    private val usbHostReader = UsbHostArchiveReader(application)
     private val updateRepository = GitHubUpdateRepository(
         context = application,
         owner = BuildConfig.GITHUB_OWNER,
@@ -113,11 +116,6 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
                     }
                 }
             }.onSuccess { file ->
-                _updateState.value = _updateState.value.copy(
-                    status = UpdateStatus.READY_TO_INSTALL,
-                    progress = 100,
-                    downloadedFile = file.absolutePath
-                )
                 onReadyToInstall(file)
             }.onFailure {
                 _updateState.value = _updateState.value.copy(
@@ -130,6 +128,19 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
 
     fun reportUpdateError(message: String) {
         _updateState.value = _updateState.value.copy(status = UpdateStatus.ERROR, message = message)
+    }
+
+    fun markInstallerOpening() {
+        _updateState.value = _updateState.value.copy(
+            status = UpdateStatus.INSTALLING,
+            progress = 100
+        )
+    }
+
+    fun finishInstallAttempt() {
+        if (_updateState.value.status == UpdateStatus.INSTALLING) {
+            _updateState.value = UpdateUiState()
+        }
     }
 
     fun requireAccess(request: AccessRequest, message: String? = null) {
@@ -164,6 +175,24 @@ class ArchiveViewModel(application: Application) : AndroidViewModel(application)
                     onFailure = { ScanOutcome.Failure(text(R.string.selected_archive_unreadable)) }
                 )
         }
+    }
+
+    fun usbDeviceAwaitingPermission() = usbHostReader.pendingPermissionDevice()
+
+    fun hasAccessibleUsbHostDevice() = usbHostReader.hasAccessibleDevice()
+
+    fun scanUsbHost(archiveName: String) {
+        startScan {
+            val archiveRoots = runCatching { usbHostReader.scanRoots(archiveName) }
+                .getOrElse { return@startScan ScanOutcome.Failure(text(R.string.usb_host_unreadable)) }
+            if (archiveRoots.isEmpty()) return@startScan ScanOutcome.ArchiveNotFound
+            ScanOutcome.Success(scanner.scanUsbRoots(archiveRoots))
+        }
+    }
+
+    override fun onCleared() {
+        usbHostReader.close()
+        super.onCleared()
     }
 
     fun openCategory(categoryId: String) {

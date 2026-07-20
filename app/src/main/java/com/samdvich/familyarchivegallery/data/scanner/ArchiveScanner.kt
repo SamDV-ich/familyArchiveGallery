@@ -8,6 +8,8 @@ import com.samdvich.familyarchivegallery.domain.model.NaturalOrder
 import com.samdvich.familyarchivegallery.domain.model.PhotoCategory
 import com.samdvich.familyarchivegallery.domain.model.PhotoItem
 import com.samdvich.familyarchivegallery.domain.model.PhotoSourceType
+import com.samdvich.familyarchivegallery.data.storage.UsbPhotoRegistry
+import me.jahnen.libaums.core.fs.UsbFile
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.ArrayDeque
@@ -60,6 +62,22 @@ class ArchiveScanner(private val context: Context) {
         )
     }
 
+    fun scanUsbRoots(roots: List<Pair<String, UsbFile>>): ArchiveScanResult {
+        val results = roots.map { (sourceId, root) -> scanUsbRoot(sourceId, root) }
+        return ArchiveScanResult(
+            sourceId = "multiple-usb-host-roots",
+            categories = results.flatMap(ArchiveScanResult::categories)
+                .sortedWith(compareBy(NaturalOrder) { it.name }),
+            rootPhotos = results.flatMap(ArchiveScanResult::rootPhotos)
+                .sortedWith(compareBy(NaturalOrder) { it.relativePath }),
+            // A .nomedia marker is only relevant to Android's media scanner; Host API
+            // sources are never sent to that scanner.
+            hasNoMediaMarker = true,
+            firstLevelDirectoryCount = results.sumOf(ArchiveScanResult::firstLevelDirectoryCount),
+            rootSupportedPhotoCount = results.sumOf(ArchiveScanResult::rootSupportedPhotoCount)
+        )
+    }
+
     fun scanDocumentTree(selectedUri: Uri, archiveName: String): ArchiveScanResult {
         val selected = requireNotNull(DocumentFile.fromTreeUri(context, selectedUri)) {
             "The selected directory is no longer available"
@@ -93,6 +111,30 @@ class ArchiveScanner(private val context: Context) {
             categories = categories,
             rootPhotos = rootPhotos,
             hasNoMediaMarker = root.findFile(".nomedia")?.isFile == true,
+            firstLevelDirectoryCount = categoryDirectories.size,
+            rootSupportedPhotoCount = rootPhotos.size
+        )
+    }
+
+    private fun scanUsbRoot(sourceId: String, root: UsbFile): ArchiveScanResult {
+        val rootChildren = root.listFiles()
+        val categoryDirectories = rootChildren.asSequence()
+            .filter { it.isDirectory && !it.name.startsWith('.') }
+            .sortedWith(compareBy(NaturalOrder) { it.name })
+            .toList()
+        val categories = categoryDirectories.mapNotNull { category ->
+            scanUsbCategory(sourceId, root, category)
+        }
+        val rootPhotos = rootChildren.asSequence()
+            .filter { !it.isDirectory && isSupportedImage(it.name) }
+            .map { file -> scanUsbPhoto(sourceId, root, file, ROOT_PHOTOS_CATEGORY_ID) }
+            .sortedWith(compareBy(NaturalOrder) { it.relativePath })
+            .toList()
+        return ArchiveScanResult(
+            sourceId = sourceId,
+            categories = categories,
+            rootPhotos = rootPhotos,
+            hasNoMediaMarker = true,
             firstLevelDirectoryCount = categoryDirectories.size,
             rootSupportedPhotoCount = rootPhotos.size
         )
@@ -143,6 +185,27 @@ class ArchiveScanner(private val context: Context) {
         return PhotoCategory(categoryId, categoryName, categoryName, photos)
     }
 
+    private fun scanUsbCategory(sourceId: String, root: UsbFile, category: UsbFile): PhotoCategory? {
+        val categoryPath = category.absolutePath.removePrefix("/")
+        val categoryId = stableId(sourceId, categoryPath)
+        val photos = buildList {
+            val pending = ArrayDeque<UsbFile>()
+            pending.add(category)
+            while (pending.isNotEmpty()) {
+                pending.removeFirst().listFiles().forEach { child ->
+                    when {
+                        child.isDirectory && !child.name.startsWith('.') -> pending.add(child)
+                        !child.isDirectory && isSupportedImage(child.name) ->
+                            add(scanUsbPhoto(sourceId, root, child, categoryId))
+                    }
+                }
+            }
+        }.sortedWith(compareBy(NaturalOrder) { it.relativePath })
+        return photos.takeIf(List<PhotoItem>::isNotEmpty)?.let {
+            PhotoCategory(categoryId, category.name, categoryPath, it)
+        }
+    }
+
     private fun scanFilePhoto(
         sourceId: String,
         root: File,
@@ -177,6 +240,27 @@ class ArchiveScanner(private val context: Context) {
         size = file.length(),
         lastModified = file.lastModified()
     )
+
+    private fun scanUsbPhoto(
+        sourceId: String,
+        root: UsbFile,
+        file: UsbFile,
+        categoryId: String
+    ): PhotoItem {
+        val relativePath = file.absolutePath.removePrefix(root.absolutePath).removePrefix("/")
+        val id = stableId(sourceId, relativePath)
+        UsbPhotoRegistry.register(id, file)
+        return PhotoItem(
+            id = id,
+            categoryId = categoryId,
+            name = file.name,
+            relativePath = relativePath,
+            source = id,
+            sourceType = PhotoSourceType.USB_FILE,
+            size = file.length,
+            lastModified = file.lastModified()
+        )
+    }
 
     companion object {
         private val supportedExtensions = setOf("jpg", "jpeg", "png", "webp", "bmp", "heic", "heif")

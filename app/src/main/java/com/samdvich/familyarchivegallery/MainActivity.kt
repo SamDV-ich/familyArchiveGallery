@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.app.PendingIntent
+import android.hardware.usb.UsbManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -28,7 +30,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var viewModel: ArchiveViewModel
     private val preferences by lazy { getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE) }
     private var receiverRegistered = false
+    private var usbPermissionReceiverRegistered = false
     private var pendingUpdateFile: File? = null
+    private var installerLaunched = false
+    private val usbManager by lazy { getSystemService(UsbManager::class.java) }
 
     private val legacyPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -38,7 +43,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         if (uri == null) {
-            viewModel.requireAccess(AccessRequest.DOCUMENT_TREE, getString(R.string.folder_not_selected))
+            viewModel.requireAccess(AccessRequest.DOCUMENT_TREE, getString(R.string.folder_picker_not_opened))
             return@registerForActivityResult
         }
         runCatching {
@@ -65,6 +70,20 @@ class MainActivity : ComponentActivity() {
     private val storageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             ensureStorageAccess()
+        }
+    }
+
+    private val usbPermissionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != ACTION_USB_PERMISSION) return
+            if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+                viewModel.scanUsbHost(ARCHIVE_DIRECTORY_NAME)
+            } else {
+                viewModel.requireAccess(
+                    AccessRequest.USB_DEVICE,
+                    getString(R.string.usb_access_denied)
+                )
+            }
         }
     }
 
@@ -114,16 +133,22 @@ class MainActivity : ComponentActivity() {
             }
             receiverRegistered = true
         }
+        registerUsbPermissionReceiver()
     }
 
     override fun onResume() {
         super.onResume()
+        if (installerLaunched) {
+            installerLaunched = false
+            viewModel.finishInstallAttempt()
+        }
         // The all-files setting does not return an ActivityResult. Re-check it whenever
         // the user returns from Settings so a granted permission starts a scan immediately.
         ensureStorageAccess()
     }
 
     override fun onStop() {
+        unregisterUsbPermissionReceiver()
         if (receiverRegistered) {
             unregisterReceiver(storageReceiver)
             receiverRegistered = false
@@ -146,8 +171,12 @@ class MainActivity : ComponentActivity() {
                 val savedUri = preferences.getString(KEY_ARCHIVE_TREE_URI, null)?.let(Uri::parse)
                 if (preferences.getBoolean(KEY_USE_SAF_FALLBACK, false) && savedUri != null) {
                     viewModel.scanDocumentTree(savedUri, ARCHIVE_DIRECTORY_NAME)
+                } else if (viewModel.hasAccessibleUsbHostDevice()) {
+                    viewModel.scanUsbHost(ARCHIVE_DIRECTORY_NAME)
+                } else if (viewModel.usbDeviceAwaitingPermission() != null) {
+                    viewModel.requireAccess(AccessRequest.USB_DEVICE)
                 } else {
-                    viewModel.requireAccess(AccessRequest.ALL_FILES)
+                    viewModel.requireAccess(AccessRequest.DOCUMENT_TREE)
                 }
             }
         }
@@ -158,7 +187,17 @@ class MainActivity : ComponentActivity() {
             AccessRequest.LEGACY_READ -> legacyPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
             AccessRequest.DOCUMENT_TREE -> documentTreeLauncher.launch(null)
             AccessRequest.ALL_FILES -> openAllFilesSettingsOrDocumentTree()
+            AccessRequest.USB_DEVICE -> requestUsbDevicePermission()
         }
+    }
+
+    private fun requestUsbDevicePermission() {
+        val device = viewModel.usbDeviceAwaitingPermission()
+        if (device == null) {
+            ensureStorageAccess()
+            return
+        }
+        usbManager.requestPermission(device, usbPermissionIntent())
     }
 
     private fun openAllFilesSettingsOrDocumentTree() {
@@ -196,8 +235,7 @@ class MainActivity : ComponentActivity() {
     private fun handleUpdateAction(state: com.samdvich.familyarchivegallery.data.update.UpdateUiState) {
         when (state.status) {
             UpdateStatus.AVAILABLE -> viewModel.downloadUpdate(::installDownloadedApk)
-            UpdateStatus.READY_TO_INSTALL -> state.downloadedFile?.let { installDownloadedApk(File(it)) }
-            UpdateStatus.DOWNLOADING, UpdateStatus.CHECKING -> Unit
+            UpdateStatus.DOWNLOADING, UpdateStatus.CHECKING, UpdateStatus.INSTALLING -> Unit
             else -> viewModel.checkForUpdates()
         }
     }
@@ -232,8 +270,38 @@ class MainActivity : ComponentActivity() {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        runCatching { startActivity(installIntent) }
+        runCatching {
+            installerLaunched = true
+            viewModel.markInstallerOpening()
+            startActivity(installIntent)
+        }
             .onFailure { viewModel.reportUpdateError(getString(R.string.package_installer_unavailable)) }
+    }
+
+    private fun usbPermissionIntent(): PendingIntent = PendingIntent.getBroadcast(
+        this,
+        0,
+        Intent(ACTION_USB_PERMISSION).setPackage(packageName),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    private fun registerUsbPermissionReceiver() {
+        if (usbPermissionReceiverRegistered) return
+        val filter = IntentFilter(ACTION_USB_PERMISSION)
+        ContextCompat.registerReceiver(
+            this,
+            usbPermissionReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        usbPermissionReceiverRegistered = true
+    }
+
+    private fun unregisterUsbPermissionReceiver() {
+        if (usbPermissionReceiverRegistered) {
+            unregisterReceiver(usbPermissionReceiver)
+            usbPermissionReceiverRegistered = false
+        }
     }
 
     companion object {
@@ -241,5 +309,6 @@ class MainActivity : ComponentActivity() {
         private const val PREFERENCES_NAME = "archive_access"
         private const val KEY_ARCHIVE_TREE_URI = "archive_tree_uri"
         private const val KEY_USE_SAF_FALLBACK = "use_saf_fallback"
+        private const val ACTION_USB_PERMISSION = "com.samdvich.familyarchivegallery.USB_PERMISSION"
     }
 }

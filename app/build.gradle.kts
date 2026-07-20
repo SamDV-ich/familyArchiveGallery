@@ -19,6 +19,7 @@ android {
     defaultConfig {
         applicationId = "com.samdvich.familyarchivegallery"
         minSdk = 28
+        // Keep current Android behavior. Storage access is routed at runtime per source.
         targetSdk = 36
         versionCode = 8
         versionName = "1.0.7"
@@ -76,6 +77,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.documentfile)
+    implementation(libs.libaums.core)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

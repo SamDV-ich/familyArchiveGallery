@@ -10,6 +10,7 @@ kotlin = "2.2.10"
 composeBom = "2026.06.00"
 tvMaterial = "1.1.0"
 documentFile = "1.0.1"
+libaums = "0.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,6 +31,7 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-tv-material = { group = "androidx.tv", name = "tv-material", version.ref = "tvMaterial" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentFile" }
+libaums-core = { group = "me.jahnen.libaums", name = "core", version.ref = "libaums" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

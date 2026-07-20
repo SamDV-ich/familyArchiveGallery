@@ -49,13 +49,13 @@ The first release will not include:
 | Secondary OS | Android TV 11 |
 | Minimum SDK | API 28 |
 | Compile SDK | API 36 |
-| Target SDK | API 29 for Xiaomi Android TV 11 legacy USB compatibility |
+| Target SDK | API 36 |
 | Screen resolution | Optimized for 1920 × 1080 |
 | Input | D-pad remote control |
 | Network | Optional; required only for GitHub Release updates |
 | Distribution | Signed APK through GitHub Releases, outside Google Play |
 
-The application must remain installable and functional on Android 9 while adapting its storage access behavior on Android 10 and Android 11 or later.
+The application must remain installable and functional on Android 9 and later, including Android TV and Google TV. Storage access is selected at runtime so the app stays compatible with current Android and a future Google Play release.
 
 ### 5. Archive Directory Contract
 
@@ -114,9 +114,10 @@ Android storage behavior differs by OS version. The application must select an a
 
 | Android version | API | Primary access mode |
 | --- | ---: | --- |
-| Android 9–10 | 28–29 | `READ_EXTERNAL_STORAGE`, legacy mode, and direct `File` access |
-| Android 11+ | 30+ | `MANAGE_EXTERNAL_STORAGE` plus direct `File` access |
-| Fallback | 30+ | Persisted Storage Access Framework directory grant when full-access settings are unavailable |
+| Android 9–10 | 28–29 | `READ_EXTERNAL_STORAGE` and direct `File` access |
+| Android 11+ | 30+ | Persisted Storage Access Framework grant, if supplied by the firmware |
+| Android 11+ fallback | 30+ | Read-only USB Host access for USB mass-storage devices when the firmware provides neither a folder picker nor usable all-files settings |
+| Optional direct mode | 30+ | `MANAGE_EXTERNAL_STORAGE` plus direct `File` access when the user grants it |
 
 #### 7.1 Android 9
 
@@ -128,18 +129,15 @@ Android storage behavior differs by OS version. The application must select an a
 
 Android 9 does not expose `StorageVolume.getDirectory()`. Mount resolution must therefore be isolated behind a storage adapter and verified on the target Xiaomi firmware.
 
-#### 7.2 Android 10
+#### 7.2 Android 11 and Later
 
-The application deliberately targets API 29 and declares `requestLegacyExternalStorage="true"`. This preserves read-only direct USB access on Android TV 10.
+- Prefer a persisted Storage Access Framework grant to the archive folder; it survives restarts.
+- Use all-files access only when the device exposes and the user explicitly grants it.
+- When Xiaomi firmware omits both system UI paths, enumerate USB mass-storage devices through Android USB Host, request per-device read-only permission, and scan `FamilyArchive` directly from the USB filesystem.
+- USB Host access is process-local and is re-requested after an app restart; it is never used for the TV's internal storage.
+- Keep the archive read-only and do not use MediaStore.
 
-This is a deliberate private-sideload compatibility exception and is not suitable for Google Play publication. Raising `targetSdk` must be followed by a complete USB permission and discovery regression test on `MITV-AYFR0`.
-
-- Request `READ_EXTERNAL_STORAGE` (`Files and media`) once.
-- Enumerate every mounted storage root directly and find `FamilyArchive` automatically.
-- Keep the archive read-only.
-- Do not use MediaStore.
-
-#### 7.3 Android 11 and Later
+#### 7.3 Android 13 and Later
 
 - Declare `MANAGE_EXTERNAL_STORAGE`.
 - Check access with `Environment.isExternalStorageManager()`.
@@ -148,8 +146,7 @@ This is a deliberate private-sideload compatibility exception and is not suitabl
 - Enumerate every mounted storage volume through `StorageManager`, including the TV's internal shared storage.
 - Use `StorageVolume.getDirectory()` where available.
 - Search for `FamilyArchive` automatically.
-- Use a persisted Storage Access Framework grant as a fallback when vendor firmware does not expose usable direct storage access.
-- Recheck access in `onResume` after returning from system settings, then rescan automatically.
+- Use a persisted Storage Access Framework grant as the normal user-selected source. USB Host remains the fallback for physical USB storage on vendor firmware without DocumentsUI.
 
 ### 8. Supported Image Formats
 
@@ -436,8 +433,8 @@ Version 1.0 is complete when all of the following are true:
 3. The application appears in the Android TV launcher with a proper TV banner.
 4. All screens can be operated with the standard D-pad remote.
 5. Android 9 storage permission is requested and handled correctly.
-6. Android 10 legacy USB access is requested and handled correctly.
-7. Android 11+ can use all-files access or retain and reuse a SAF directory grant.
+6. Android 9–10 legacy USB access is requested and handled correctly.
+7. Android 11+ can retain and reuse a SAF directory grant, use all-files access when it is available, or request USB Host access for a physical mass-storage drive.
 8. A removable USB drive is detected without querying MediaStore.
 9. `FamilyArchive` is found automatically in every available storage location whenever direct access is available.
 10. Every non-empty first-level folder becomes a category, while nested folders do not.

@@ -33,14 +33,16 @@
     <string name="access_document_tree_message">Выберите папку FamilyArchive один раз. Android сохранит доступ после перезагрузки.</string>
     <string name="access_all_files_message">Разрешите доступ ко всем файлам, чтобы приложение могло автоматически читать FamilyArchive во внутренней памяти и на USB-накопителях. Если системная настройка недоступна, выберите папку архива вручную.</string>
     <string name="access_default_message">Предоставьте доступ к папке семейного архива.</string>
+    <string name="access_usb_host_message">Разрешите доступ только для чтения к подключённому USB-накопителю. Это работает, даже если на приставке нет системного выбора папки.</string>
     <string name="select_folder">Выбрать папку</string>
     <string name="open_file_access_settings">Открыть настройки доступа</string>
     <string name="grant_access">Предоставить доступ</string>
+    <string name="grant_usb_access">Разрешить доступ к USB</string>
     <string name="check_updates">Проверить обновления</string>
     <string name="checking_updates">Проверка…</string>
     <string name="update_to_version">Обновить до %1$s</string>
     <string name="downloading_update">Загрузка %1$d%%</string>
-    <string name="install_update">Установить обновление</string>
+    <string name="opening_installer">Открываем установщик…</string>
     <string name="retry_update">Повторить обновление</string>
     <string name="latest_version_installed">Установлена последняя версия</string>
     <string name="update_check_failed">Не удалось проверить обновления</string>
@@ -50,8 +52,12 @@
     <string name="connect_usb_message">Не найдены доступные места хранения. Подключите USB-накопитель или используйте внутреннюю память приставки.</string>
     <string name="archive_folder_not_found_message">Папка FamilyArchive не найдена ни в одном доступном месте хранения.</string>
     <string name="folder_not_selected">Папка не выбрана</string>
+    <string name="folder_picker_not_opened">Приставка не открыла системный выбор папки. Подключите накопитель и разрешите доступ к USB либо включите доступ к файлам в настройках Android.</string>
+    <string name="usb_access_denied">Доступ к USB-накопителю не предоставлен.</string>
+    <string name="usb_host_unreadable">USB-накопитель обнаружен, но его файловую систему не удалось прочитать через USB Host.</string>
     <string name="install_permission_denied">Разрешение на установку приложений не предоставлено</string>
     <string name="system_folder_picker_unavailable">Системный выбор папки недоступен на этой приставке</string>
     <string name="downloaded_apk_unavailable">Загруженный APK больше не доступен</string>
     <string name="package_installer_unavailable">Не удалось открыть системный установщик</string>
+    <string name="app_version">Версия %1$s</string>
 </resources>
